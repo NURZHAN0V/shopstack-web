@@ -4,16 +4,20 @@
 .catalog-trigger {
   display: none;
   align-items: center;
+  justify-content: center;
   gap: $space-2;
-  padding: $space-2 $space-4;
+  height: var(--ss-header-control-height);
+  padding: 0 $space-4;
   border: none;
   border-radius: $radius-sm;
   background: $color-primary;
   color: $color-text-inverse;
   font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
-  transition: background $transition;
+  flex-shrink: 0;
+  transition: background $transition, color $transition, box-shadow $transition;
 
   @media (min-width: $bp-md) {
     display: inline-flex;
@@ -24,7 +28,19 @@
   }
 
   &.is-open {
-    background: $color-primary-hover;
+    background: $color-primary-light;
+    color: $color-primary-hover;
+    box-shadow: 0 0 0 2px $color-primary;
+
+    &:hover {
+      background: $color-primary-light;
+      color: $color-primary;
+    }
+
+    .catalog-trigger__icon {
+      font-size: 1.25rem;
+      font-weight: 400;
+    }
   }
 
   &__icon {
@@ -41,7 +57,7 @@
 .catalog-mega {
   position: fixed;
   inset: 0;
-  z-index: 150;
+  z-index: 1;
   pointer-events: none;
   visibility: hidden;
 
@@ -60,32 +76,36 @@
   }
 
   &__backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgb(28 25 23 / 35%);
+    position: fixed;
+    top: var(--ss-header-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgb(28 25 23 / 40%);
     opacity: 0;
     transition: opacity 0.25s ease;
   }
 
   &__panel {
-    position: absolute;
-    top: $header-height;
+    position: fixed;
+    top: var(--ss-header-height);
     left: 0;
     right: 0;
-    max-height: calc(100vh - #{$header-height} - #{$space-4});
+    max-height: calc(100vh - var(--ss-header-height) - #{$space-4});
     margin: 0 auto;
     max-width: $container-max;
     padding-inline: var(--ss-container-padding);
     opacity: 0;
     transform: translateY(-8px);
     transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: auto;
   }
 
   &__inner {
     display: grid;
     grid-template-columns: 240px 1fr;
     min-height: 360px;
-    max-height: calc(100vh - #{$header-height} - #{$space-8});
+    max-height: calc(100vh - var(--ss-header-height) - #{$space-8});
     background: $color-surface;
     border: 1px solid $color-border;
     border-radius: $radius-md;
@@ -204,42 +224,99 @@
 // Страница каталога
 .catalog-page {
   display: grid;
-  gap: $space-6;
+  gap: $space-4;
 
   @media (min-width: $bp-lg) {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 240px 1fr;
+    gap: $space-6;
     align-items: start;
   }
 }
 
-.catalog-sidebar {
-  display: none;
+.catalog-panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: $space-3 $space-4;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-surface;
+  font-weight: 600;
+  color: $color-text;
 
   @media (min-width: $bp-lg) {
-    display: block;
-    position: sticky;
-    top: calc(#{$header-height} + #{$space-4});
-    background: $color-surface;
-    border: 1px solid $color-border;
-    border-radius: $radius-md;
-    overflow: hidden;
+    display: none;
+  }
+}
+
+.catalog-panel {
+  display: none;
+  flex-direction: column;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  overflow: hidden;
+
+  &.is-open {
+    display: flex;
   }
 
-  &__title {
-    padding: $space-4;
+  @media (min-width: $bp-lg) {
+    display: flex;
+    position: sticky;
+    top: calc(#{$header-height} + #{$space-4});
+    max-height: calc(100vh - #{$header-height} - #{$space-8});
+    overflow-y: auto;
+  }
+
+  &__head {
+    padding: $space-4 $space-5;
+    font-size: 1rem;
+    font-weight: 700;
+    color: $color-text;
+    border-bottom: 1px solid $color-border;
+
+    @media (min-width: $bp-lg) {
+      display: none;
+    }
+  }
+
+  &__section {
+    padding: $space-4 $space-2;
+
+    & + & {
+      border-top: 1px solid $color-border;
+    }
+
+    &--filters {
+      padding-bottom: $space-2;
+    }
+  }
+
+  &__label {
+    padding: 0 $space-3 $space-3;
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: $color-text-muted;
-    border-bottom: 1px solid $color-border;
   }
 
-  &__list {
+  &__nav {
     display: flex;
     flex-direction: column;
-    padding: $space-2 0;
+    padding: 0;
   }
+
+  &__reset {
+    width: calc(100% - #{$space-8});
+    margin: $space-2 $space-4 $space-4;
+  }
+}
+
+.catalog-sidebar {
+  display: none;
 }
 
 .catalog-main {
@@ -247,39 +324,7 @@
 }
 
 .catalog-mobile-cats {
-  margin-bottom: $space-4;
-
-  @media (min-width: $bp-lg) {
-    display: none;
-  }
-
-  &__toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: $space-3 $space-4;
-    border: 1px solid $color-border;
-    border-radius: $radius-md;
-    background: $color-surface;
-    font-weight: 600;
-    color: $color-text;
-  }
-
-  &__panel {
-    display: none;
-    margin-top: $space-2;
-    padding: $space-2;
-    border: 1px solid $color-border;
-    border-radius: $radius-md;
-    background: $color-surface;
-    max-height: 280px;
-    overflow-y: auto;
-
-    &.is-open {
-      display: block;
-    }
-  }
+  display: none;
 }
 
 .catalog-subs-panel {
@@ -291,16 +336,6 @@
 
   @media (max-width: #{$bp-lg - 1px}) {
     padding: $space-4;
-  }
-}
-
-.catalog-products-row {
-  display: grid;
-  gap: $space-6;
-
-  @media (min-width: $bp-md) {
-    grid-template-columns: 220px 1fr;
-    align-items: start;
   }
 }
 

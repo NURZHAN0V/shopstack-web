@@ -7,10 +7,10 @@
   &__bar {
     display: flex;
     align-items: stretch;
-    min-height: 44px;
+    height: var(--ss-header-control-height);
     background: $color-surface;
     border: 1px solid $color-border;
-    border-radius: $radius-lg;
+    border-radius: $radius-md;
     overflow: visible;
     box-shadow: $shadow-sm;
     transition: border-color $transition, box-shadow $transition;
@@ -32,17 +32,19 @@
     align-items: center;
     gap: $space-2;
     height: 100%;
-    padding: 0 $space-4;
+    padding: 0 $space-3;
     border: none;
     background: $color-bg;
     color: $color-text;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     white-space: nowrap;
-    max-width: 140px;
+    max-width: 120px;
 
     @media (min-width: $bp-md) {
-      max-width: 160px;
+      padding: 0 $space-4;
+      font-size: 0.875rem;
+      max-width: 140px;
     }
   }
 
@@ -100,11 +102,17 @@
 
   &__input {
     width: 100%;
-    padding: $space-3 $space-10 $space-3 $space-4;
+    height: 100%;
+    padding: 0 $space-10 0 $space-3;
     border: none;
     background: transparent;
     outline: none;
     font-size: 0.9375rem;
+    line-height: 1.2;
+
+    @media (min-width: $bp-md) {
+      padding-inline-start: $space-4;
+    }
 
     &::-webkit-search-cancel-button {
       display: none;
@@ -131,12 +139,13 @@
 
   &__submit {
     flex-shrink: 0;
-    width: 48px;
+    width: var(--ss-header-control-height);
+    height: 100%;
     border: none;
     border-left: 1px solid $color-border;
     background: $color-primary;
     color: $color-text-inverse;
-    border-radius: 0 $radius-lg $radius-lg 0;
+    border-radius: 0 $radius-md $radius-md 0;
     transition: background $transition;
 
     &:hover {
@@ -338,8 +347,7 @@
 
   &--page {
     .search-widget__bar {
-      min-height: 52px;
-      border-radius: $radius-lg;
+      height: 52px;
     }
 
     .search-widget__dropdown {
@@ -349,15 +357,14 @@
 }
 
 .site-header__search-wrap {
-  order: 3;
-  flex: 1 1 100%;
+  grid-area: search;
   width: 100%;
   min-width: 0;
+  align-self: center;
 
   @media (min-width: $bp-md) {
-    order: unset;
-    flex: 1;
-    max-width: 520px;
-    margin-inline-start: auto;
+    justify-self: center;
+    max-width: min(560px, 100%);
+    margin-inline: auto;
   }
 }

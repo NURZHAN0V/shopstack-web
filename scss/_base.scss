@@ -16,6 +16,8 @@ html {
   --ss-container-max: #{$container-max};
   --ss-container-padding: #{$container-padding};
   --ss-page-gap: #{$space-8};
+  --ss-header-height: #{$header-height};
+  --ss-header-control-height: #{$header-control-height};
 }
 
 @media (min-width: $bp-md) {

@@ -16,6 +16,7 @@ import {
   setCurrency,
 } from './utils.js';
 import { initHeaderSearch } from './search-widget.js';
+import { initCartBadge } from './cart-store.js';
 
 const state = {
   site: null,
@@ -46,23 +47,37 @@ function renderMaintenance(message) {
     </div>`;
 }
 
+function updateCatalogTriggerIcon(isOpen) {
+  const trigger = document.getElementById('catalog-trigger');
+  const icon = trigger?.querySelector('.catalog-trigger__icon');
+  if (!icon) return;
+  icon.textContent = isOpen ? '×' : '☰';
+  trigger.setAttribute('aria-label', isOpen ? 'Закрыть каталог' : 'Каталог');
+}
+
 function closeMegaMenu() {
   const mega = document.getElementById('catalog-mega');
   const trigger = document.getElementById('catalog-trigger');
+  const header = document.getElementById('site-header');
   mega?.classList.remove('is-open');
   trigger?.classList.remove('is-open');
   trigger?.setAttribute('aria-expanded', 'false');
+  header?.classList.remove('site-header--catalog-open');
   document.body.classList.remove('catalog-mega-open');
+  updateCatalogTriggerIcon(false);
 }
 
 function openMegaMenu() {
   const mega = document.getElementById('catalog-mega');
   const trigger = document.getElementById('catalog-trigger');
+  const header = document.getElementById('site-header');
   if (!mega || !trigger) return;
   mega.classList.add('is-open');
   trigger.classList.add('is-open');
   trigger.setAttribute('aria-expanded', 'true');
+  header?.classList.add('site-header--catalog-open');
   document.body.classList.add('catalog-mega-open');
+  updateCatalogTriggerIcon(true);
 
   const firstRoot = mega.querySelector('[data-root-id]');
   if (firstRoot && !mega.querySelector('.catalog-mega__roots .is-active')) {
@@ -174,21 +189,25 @@ export async function initShell(options = {}) {
 
   headerEl.innerHTML = `
     <div class="container site-header__inner">
-      <a class="site-header__logo" href="/index.html">
-        ${logoHtml}
-        <span>${escapeHtml(site.name || 'ShopStack')}</span>
-      </a>
-      <div class="site-header__actions">
-        <button type="button" class="catalog-trigger" id="catalog-trigger" aria-expanded="false" aria-controls="catalog-mega">
+      <div class="site-header__left">
+        <a class="site-header__logo" href="/index.html">
+          ${logoHtml}
+          <span>${escapeHtml(site.name || 'ShopStack')}</span>
+        </a>
+        <button type="button" class="catalog-trigger" id="catalog-trigger" aria-expanded="false" aria-controls="catalog-mega" aria-label="Каталог">
           <span class="catalog-trigger__icon" aria-hidden="true">☰</span>
           Каталог
         </button>
-        <nav class="site-header__nav" aria-label="Основная навигация">
-          <a href="/index.html" class="${activeNav === 'home' ? 'is-active' : ''}">Главная</a>
-        </nav>
       </div>
       <div class="site-header__search-wrap" id="header-search-root"></div>
-      <button type="button" class="site-header__menu-btn" id="mobile-menu-btn" aria-label="Меню" aria-expanded="false">☰</button>
+      <div class="site-header__right">
+        <a class="site-header__cart" href="/cart.html" aria-label="Корзина">
+          <span class="site-header__cart-icon" aria-hidden="true">🛒</span>
+          <span class="site-header__cart-label">Корзина</span>
+          <span class="site-header__cart-badge" id="cart-badge" hidden>0</span>
+        </a>
+        <button type="button" class="site-header__menu-btn" id="mobile-menu-btn" aria-label="Меню" aria-expanded="false">☰</button>
+      </div>
     </div>
     <div class="catalog-mega" id="catalog-mega" aria-hidden="true">
       <div class="catalog-mega__backdrop" id="catalog-mega-backdrop"></div>
@@ -210,8 +229,8 @@ export async function initShell(options = {}) {
             ${rootListHtml}
           </div>
         </div>
-        <a href="/index.html">Главная</a>
         <a href="/catalog.html">Все товары</a>
+        <a href="/cart.html">Корзина</a>
       </div>
     </nav>`;
 
@@ -239,6 +258,7 @@ export async function initShell(options = {}) {
           <div class="site-footer__heading">Покупателям</div>
           <div class="site-footer__links">
             <a href="/catalog.html">Каталог</a>
+            <a href="/cart.html">Корзина</a>
             <a href="/search.html">Поиск</a>
             ${pageLinks}
           </div>
@@ -264,6 +284,7 @@ export async function initShell(options = {}) {
   bindMegaMenu();
   bindMobileCatalogNav();
   initHeaderSearch();
+  initCartBadge();
 
   if (appEl) appEl.classList.remove('app-hidden');
   state.ready = true;

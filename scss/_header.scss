@@ -3,34 +3,66 @@
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 100;
-  background: $color-surface;
-  border-bottom: 1px solid $color-border;
-  box-shadow: $shadow-sm;
+  z-index: 200;
 
   &__inner {
-    display: flex;
-    flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'left right'
+      'search search';
     align-items: center;
-    gap: $space-3 $space-4;
-    min-height: $header-height;
+    gap: $space-3;
+    min-height: var(--ss-header-height);
     padding-block: $space-3;
+    background: $color-surface;
+    border-bottom: 1px solid $color-border;
+    box-shadow: $shadow-sm;
+    transition: box-shadow $transition;
 
     @media (min-width: $bp-md) {
-      flex-wrap: nowrap;
-      gap: $space-4;
+      grid-template-columns: auto minmax(280px, 1fr) auto;
+      grid-template-areas: 'left search right';
+      gap: $space-4 $space-5;
+      padding-block: $space-3;
     }
   }
 
-  &__logo {
+  &--catalog-open &__inner {
+    box-shadow: $shadow-md;
+    border-bottom-color: transparent;
+  }
+
+  &__left {
+    grid-area: left;
     display: flex;
     align-items: center;
     gap: $space-3;
+    min-width: 0;
+  }
+
+  &__right {
+    grid-area: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: $space-2;
+    min-height: var(--ss-header-control-height);
+  }
+
+  &__logo {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-3;
     flex-shrink: 0;
+    min-height: var(--ss-header-control-height);
     color: $color-text;
     text-decoration: none;
     font-weight: 700;
     font-size: 1.125rem;
+    line-height: 1.2;
 
     &:hover {
       text-decoration: none;
@@ -38,56 +70,85 @@
     }
 
     img {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       object-fit: contain;
       border-radius: $radius-sm;
-    }
-  }
 
-  &__nav {
-    display: none;
-    align-items: center;
-    gap: $space-4;
-    margin-inline-start: $space-2;
-
-    @media (min-width: $bp-md) {
-      display: flex;
-    }
-
-    a {
-      color: $color-text;
-      font-size: 0.9375rem;
-      font-weight: 500;
-      text-decoration: none;
-
-      &:hover,
-      &.is-active {
-        color: $color-primary;
+      @media (min-width: $bp-md) {
+        width: 40px;
+        height: 40px;
       }
     }
   }
 
-  &__actions {
-    display: flex;
+  &__cart {
+    position: relative;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: $space-2;
-    margin-inline-start: auto;
+    min-height: var(--ss-header-control-height);
+    padding: 0 $space-3;
+    border-radius: $radius-sm;
+    color: $color-text;
+    text-decoration: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: background $transition, color $transition;
 
-    @media (min-width: $bp-md) {
-      margin-inline-start: 0;
+    &:hover {
+      color: $color-primary;
+      text-decoration: none;
+      background: $color-primary-light;
     }
   }
 
+  &__cart-icon {
+    display: inline-flex;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  &__cart-label {
+    @media (max-width: #{$bp-md - 1px}) {
+      display: none;
+    }
+  }
+
+  &__cart-badge {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: $radius-full;
+    background: $color-primary;
+    color: $color-text-inverse;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+  }
+
   &__menu-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: var(--ss-header-control-height);
+    height: var(--ss-header-control-height);
     border: 1px solid $color-border;
     border-radius: $radius-sm;
     background: $color-surface;
+    flex-shrink: 0;
+    transition: border-color $transition, background $transition;
+
+    &:hover {
+      border-color: $color-primary;
+      background: $color-primary-light;
+    }
 
     @media (min-width: $bp-md) {
       display: none;
@@ -96,6 +157,8 @@
 }
 
 .mobile-nav {
+  position: relative;
+  z-index: 2;
   display: none;
   border-top: 1px solid $color-border;
   background: $color-surface;
