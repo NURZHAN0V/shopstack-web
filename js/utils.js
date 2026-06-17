@@ -66,9 +66,8 @@ export function getProductImage(product) {
 export function isOutOfStock(product) {
   if (product?.displayAsOutOfStock) return true;
   if (product?.unlimitedStock) return false;
-  if (product?.inStock === false) return true;
-  if (typeof product?.stockQuantity === 'number' && product.stockQuantity <= 0) return true;
-  return false;
+  if (typeof product?.stockQuantity === 'number') return product.stockQuantity <= 0;
+  return product?.inStock === false;
 }
 
 export function effectivePrice(product) {
