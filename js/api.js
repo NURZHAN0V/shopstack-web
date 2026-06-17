@@ -147,13 +147,16 @@ export async function getPage(slug) {
   }
 }
 
-/** Пробуем загрузить опубликованные информационные страницы по известным slug. */
+/** Опубликованные информационные страницы для футера (один запрос, без 404 на каждый slug). */
 export async function discoverFooterPages(slugs) {
-  const results = await Promise.all(
-    slugs.map(async (slug) => {
-      const page = await getPage(slug);
-      return page ? { slug, title: page.title } : null;
-    }),
-  );
-  return results.filter(Boolean);
+  if (!Array.isArray(slugs) || !slugs.length) return [];
+  const qs = new URLSearchParams();
+  slugs.forEach((slug) => qs.append('slug', slug));
+  try {
+    const list = await request(`/api/pages/footer-links?${qs.toString()}`);
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
 }
