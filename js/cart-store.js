@@ -90,6 +90,10 @@ export function clearCart() {
   writeCart([]);
 }
 
+export function setCartItems(items) {
+  writeCart(Array.isArray(items) ? items : []);
+}
+
 export function onCartUpdated(callback) {
   window.addEventListener(CART_EVENT, callback);
   return () => window.removeEventListener(CART_EVENT, callback);

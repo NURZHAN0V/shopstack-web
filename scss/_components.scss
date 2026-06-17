@@ -17,10 +17,15 @@
     background: $color-primary;
     color: #fff;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: $color-primary-hover;
       text-decoration: none;
       color: #fff;
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
   }
 

@@ -2,11 +2,13 @@ import { createGuestOrder, getDeliveryOptions, getProduct } from './api.js';
 import { getCachedStoreConfig, pageTitle } from './store-config.js';
 import {
   clearCart,
+  getCartCount,
   getCartItems,
   getCartTotal,
   initCartBadge,
   onCartUpdated,
   removeFromCart,
+  setCartItems,
   updateCartQuantity,
 } from './cart-store.js';
 import { initShell, showLoading } from './shell.js';
@@ -22,6 +24,28 @@ import {
 } from './utils.js';
 
 const ORDER_TOKEN_KEY = 'shopstack_last_order';
+const CHECKOUT_DRAFT_KEY = 'shopstack_checkout_draft';
+
+/** Кэш способов доставки — не сбрасываем при каждом изменении количества. */
+let deliveryOptionsCache = null;
+
+async function loadDeliveryOptions(force = false) {
+  if (!force && deliveryOptionsCache !== null) {
+    return deliveryOptionsCache;
+  }
+  try {
+    const list = (await getDeliveryOptions()) || [];
+    if (list.length || force) {
+      deliveryOptionsCache = list;
+    } else if (deliveryOptionsCache === null) {
+      deliveryOptionsCache = [];
+    }
+    return deliveryOptionsCache;
+  } catch {
+    if (deliveryOptionsCache === null) deliveryOptionsCache = [];
+    return deliveryOptionsCache;
+  }
+}
 
 async function init() {
   const content = document.getElementById('page-content');
@@ -33,6 +57,7 @@ async function init() {
   setMeta(pageTitle(['Корзина']), 'Оформление заказа');
 
   await syncCartWithServer();
+  await loadDeliveryOptions(true);
   await render();
   bindEvents();
   initCookieBanner();
@@ -68,7 +93,7 @@ async function syncCartWithServer() {
   }
 
   if (changed) {
-    localStorage.setItem('shopstack_cart', JSON.stringify(items));
+    setCartItems(items);
   }
 }
 
@@ -77,6 +102,8 @@ async function render() {
   const items = getCartItems();
   const cfg = getCachedStoreConfig();
   const guestCheckout = cfg.storefront?.enableGuestCheckout !== false;
+  saveCheckoutDraftFromForm(document.getElementById('checkout-form'));
+  const checkoutDraft = readCheckoutDraft();
 
   if (!items.length) {
     const lastOrder = readLastOrder();
@@ -88,15 +115,11 @@ async function render() {
     return;
   }
 
-  let deliveryOptions = [];
-  try {
-    deliveryOptions = (await getDeliveryOptions()) || [];
-  } catch {
-    deliveryOptions = [];
-  }
+  let deliveryOptions = await loadDeliveryOptions();
 
   const subtotal = getCartTotal();
   const taxHint = formatTaxHint(subtotal);
+  const defaultDeliveryPrice = deliveryOptions[0]?.price || 0;
   const deliveryHtml = deliveryOptions.length
     ? deliveryOptions
         .map(
@@ -113,17 +136,20 @@ async function render() {
         </label>`,
         )
         .join('')
-    : '<p class="cart-checkout__hint">Способы доставки временно недоступны.</p>';
+    : `<p class="cart-checkout__hint">Способы доставки временно недоступны. <button type="button" class="cart-checkout__retry" id="delivery-retry">Повторить загрузку</button></p>`;
+
+  const previewHtml = renderCheckoutPreview(items);
 
   content.innerHTML = `
     <div class="cart-page">
       <h1 class="cart-page__title">Корзина</h1>
       <div class="cart-layout">
-        <section class="cart-items" aria-label="Товары в корзине">
+        <section class="cart-items" id="cart-items" aria-label="Товары в корзине">
           ${items.map(renderCartItem).join('')}
         </section>
         <aside class="cart-checkout">
           <h2 class="cart-checkout__title">Оформление заказа</h2>
+          ${previewHtml}
           ${
             guestCheckout
               ? `<form id="checkout-form" class="cart-checkout__form" novalidate>
@@ -157,12 +183,12 @@ async function render() {
             </label>
             <div class="cart-checkout__summary">
               <div><span>Товары</span><strong id="cart-subtotal">${formatPrice(subtotal)}</strong></div>
-              <div><span>Доставка</span><strong id="cart-delivery">${formatPrice(getSelectedDeliveryPrice())}</strong></div>
+              <div><span>Доставка</span><strong id="cart-delivery">${formatPrice(defaultDeliveryPrice)}</strong></div>
               ${taxHint ? `<p class="cart-checkout__tax-hint">${escapeHtml(taxHint)}</p>` : ''}
-              <div class="cart-checkout__total"><span>Итого</span><strong id="cart-total">${formatPrice(subtotal + getSelectedDeliveryPrice())}</strong></div>
+              <div class="cart-checkout__total"><span>Итого</span><strong id="cart-total">${formatPrice(subtotal + defaultDeliveryPrice)}</strong></div>
             </div>
             <p class="cart-checkout__error" id="checkout-error" hidden></p>
-            <button type="submit" class="btn btn--primary btn--block" id="checkout-submit" ${deliveryOptions.length ? '' : 'disabled'}>
+            <button type="submit" class="btn btn--primary btn--block" id="checkout-submit">
               Оформить заказ
             </button>
           </form>`
@@ -172,7 +198,73 @@ async function render() {
       </div>
     </div>`;
 
+  applyCheckoutDraft(document.getElementById('checkout-form'), checkoutDraft);
   updateTotals();
+}
+
+function renderCheckoutPreview(items) {
+  const count = getCartCount();
+  const lines = items.slice(0, 4).map(
+    (item) =>
+      `<li class="cart-checkout__preview-item"><span>${escapeHtml(item.title || 'Товар')}</span><span>${item.quantity} × ${formatPrice(item.price)}</span></li>`,
+  );
+  if (items.length > 4) {
+    lines.push(`<li class="cart-checkout__preview-more">…и ещё ${items.length - 4}</li>`);
+  }
+  return `
+    <div class="cart-checkout__preview">
+      <div class="cart-checkout__preview-head">
+        <strong>${count} ${pluralItems(count)}</strong>
+        <a class="cart-checkout__preview-link" href="#cart-items">К списку</a>
+      </div>
+      <ul class="cart-checkout__preview-list">${lines.join('')}</ul>
+    </div>`;
+}
+
+function pluralItems(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'товар';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'товара';
+  return 'товаров';
+}
+
+function readCheckoutDraft() {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCheckoutDraftFromForm(form) {
+  if (!form) return;
+  const data = {};
+  new FormData(form).forEach((value, key) => {
+    if (typeof value === 'string' && value.trim()) data[key] = value;
+  });
+  if (Object.keys(data).length) {
+    sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(data));
+  }
+}
+
+function applyCheckoutDraft(form, draft) {
+  if (!form || !draft) return;
+  Object.entries(draft).forEach(([name, value]) => {
+    const field = form.elements.namedItem(name);
+    if (!field || typeof value !== 'string') return;
+    if (field instanceof RadioNodeList) {
+      const radio = [...field].find((el) => el.value === value);
+      if (radio) radio.checked = true;
+      return;
+    }
+    if ('value' in field) field.value = value;
+  });
+}
+
+function clearCheckoutDraft() {
+  sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
 }
 
 function renderCartItem(item) {
@@ -246,30 +338,58 @@ function updateTotals() {
   if (totalEl) totalEl.textContent = formatPrice(subtotal + delivery);
 }
 
+function updateCartItemRow(row) {
+  if (!row) return;
+  const productId = row.dataset.productId;
+  const variantId = row.dataset.variantId || null;
+  const item = getCartItems().find(
+    (entry) =>
+      String(entry.productId) === String(productId) &&
+      String(entry.productVariantId || '') === String(variantId || ''),
+  );
+  if (!item) return;
+  const totalEl = row.querySelector('.cart-item__total');
+  if (totalEl) totalEl.textContent = formatPrice((item.price || 0) * (item.quantity || 0));
+  updateTotals();
+}
+
 function bindEvents() {
-  document.getElementById('page-content')?.addEventListener('click', (e) => {
+  const root = document.getElementById('page-content');
+  root?.addEventListener('input', (e) => {
+    const form = e.target.closest('#checkout-form');
+    if (form) saveCheckoutDraftFromForm(form);
+  });
+
+  root?.addEventListener('click', async (e) => {
+    if (e.target.closest('#delivery-retry')) {
+      deliveryOptionsCache = null;
+      await loadDeliveryOptions(true);
+      await render();
+      return;
+    }
+
     const removeBtn = e.target.closest('.cart-item__remove');
     if (removeBtn) {
       const row = removeBtn.closest('.cart-item');
       removeFromCart(row.dataset.productId, row.dataset.variantId || null);
-      render();
       return;
     }
   });
 
-  document.getElementById('page-content')?.addEventListener('change', (e) => {
+  root?.addEventListener('change', (e) => {
     if (e.target.matches('.cart-qty-input')) {
       const row = e.target.closest('.cart-item');
       updateCartQuantity(row.dataset.productId, row.dataset.variantId || null, e.target.value);
-      render();
+      updateCartItemRow(row);
       return;
     }
     if (e.target.matches('input[name="deliveryOptionId"]')) {
       updateTotals();
+      saveCheckoutDraftFromForm(e.target.closest('#checkout-form'));
     }
   });
 
-  document.getElementById('page-content')?.addEventListener('submit', async (e) => {
+  root?.addEventListener('submit', async (e) => {
     const form = e.target.closest('#checkout-form');
     if (!form) return;
     e.preventDefault();
@@ -299,8 +419,14 @@ function bindEvents() {
       items,
     };
 
-    if (!payload.contactPerson || !payload.guestEmail || !payload.guestPhone || !deliveryId) {
-      errorEl.textContent = 'Заполните обязательные поля.';
+    if (!payload.contactPerson || !payload.guestEmail || !payload.guestPhone) {
+      errorEl.textContent = 'Заполните имя, телефон и email.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    if (!deliveryId) {
+      errorEl.textContent = 'Выберите способ доставки.';
       errorEl.hidden = false;
       return;
     }
@@ -311,6 +437,7 @@ function bindEvents() {
     try {
       const res = await createGuestOrder(payload);
       saveLastOrder({ orderId: res.orderId, number: res.number, guestToken: res.guestToken });
+      clearCheckoutDraft();
       clearCart();
       await render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
