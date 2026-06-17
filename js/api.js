@@ -64,6 +64,16 @@ export async function getProducts(params = {}) {
   return request(`/api/products${query ? `?${query}` : ''}`);
 }
 
+/** Полнотекстовый поиск (подсказки, автодополнение). */
+export async function searchProducts(q, limit = 10) {
+  const qs = new URLSearchParams();
+  if (q) qs.set('q', q);
+  const query = qs.toString();
+  const hits = await request(`/api/products/search${query ? `?${query}` : ''}`);
+  if (!Array.isArray(hits)) return [];
+  return hits.slice(0, limit);
+}
+
 export async function getProduct(key) {
   return request(`/api/products/${encodeURIComponent(key)}`);
 }
