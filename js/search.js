@@ -1,4 +1,13 @@
-import { getAttributes, getCategories, getProducts } from './api.js';
+import { getAttributes, getProducts } from './api.js';
+import {
+  buildCategoryTree,
+  findCategory,
+  getChildCategories,
+  getRootCategory,
+  loadCategories,
+} from './categories.js';
+import { sortProducts } from './search-suggest.js';
+import { mountSearchWidget } from './search-widget.js';
 import {
   initShell,
   renderProductGrid,
@@ -7,6 +16,7 @@ import {
 } from './shell.js';
 import { initCookieBanner } from './cookies.js';
 import {
+  catalogUrl,
   debounce,
   escapeHtml,
   parseQuery,
@@ -15,7 +25,10 @@ import {
 } from './utils.js';
 
 let categories = [];
+let categoryTree = [];
 let attributes = [];
+let currentItems = [];
+let currentSort = 'popular';
 
 async function init() {
   const content = document.getElementById('page-content');
@@ -27,34 +40,49 @@ async function init() {
   const site = shell.site;
   const initial = parseQuery();
 
-  [categories, attributes] = await Promise.all([
-    getCategories().catch(() => []),
-    getAttributes().catch(() => []),
-  ]);
+  categories = shell.categories?.length ? shell.categories : await loadCategories();
+  categoryTree = shell.categoryTree?.length ? shell.categoryTree : buildCategoryTree(categories);
+  attributes = await getAttributes().catch(() => []);
 
   content.innerHTML = `
-      <form class="search-form-inline" id="search-form" role="search">
-        <label class="sr-only" for="search-input">Поиск</label>
-        <input id="search-input" type="search" name="q" placeholder="Поиск товаров…" value="${escapeHtml(initial.q || '')}" autocomplete="off">
-        <button type="submit" class="btn btn--primary">Искать</button>
-      </form>
-      <div id="category-nav" class="category-nav"></div>
-      <div class="grid-2">
-        <aside id="filters-panel" class="filters" aria-label="Фильтры поиска"></aside>
-        <div>
-          <div class="catalog-toolbar">
+    <div class="search-page">
+      <div class="search-page__widget" id="search-page-widget"></div>
+      <div class="search-layout">
+        <aside class="search-sidebar" aria-label="Фильтры и категории">
+          <nav class="search-sidebar__categories" id="search-categories"></nav>
+          <div id="filters-panel" class="filters filters--search"></div>
+        </aside>
+        <div class="search-main">
+          <div class="search-main__toolbar catalog-toolbar">
             <div id="results-count" class="catalog-toolbar__count"></div>
+            <label class="search-sort">
+              <span class="sr-only">Сортировка</span>
+              <select id="search-sort" class="search-sort__select" aria-label="Сортировка">
+                <option value="popular">Популярные</option>
+                <option value="price-asc">Сначала дешевле</option>
+                <option value="price-desc">Сначала дороже</option>
+                <option value="name">По названию</option>
+              </select>
+            </label>
           </div>
           <div id="products-area"></div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
+
+  mountSearchWidget(document.getElementById('search-page-widget'), {
+    variant: 'page',
+    query: initial.q || '',
+    categoryId: initial.categoryId || '',
+    inputId: 'search-page-input',
+  });
 
   setMeta(
     initial.q ? `Поиск: ${initial.q} — ${site.name}` : `Поиск — ${site.name}`,
     `Результаты поиска товаров в ${site.name || 'магазине'}`,
   );
 
-  renderCategoryNav();
+  renderCategorySidebar();
   renderFilters();
   await loadProducts();
   bindEvents();
@@ -62,11 +90,12 @@ async function init() {
 
   window.addEventListener('popstate', () => {
     const q = parseQuery();
-    const input = document.getElementById('search-input');
-    if (input) input.value = q.q || '';
-    renderCategoryNav();
+    renderCategorySidebar();
     renderFilters();
     loadProducts();
+    const widgetRoot = document.getElementById('search-page-widget');
+    const input = widgetRoot?.querySelector('#search-page-input');
+    if (input) input.value = q.q || '';
   });
 }
 
@@ -87,23 +116,71 @@ function getFiltersFromUrl() {
   };
 }
 
-function renderCategoryNav() {
-  const el = document.getElementById('category-nav');
+function renderCategorySidebar() {
+  const el = document.getElementById('search-categories');
   if (!el) return;
-  const filters = getFiltersFromUrl();
-  const activeId = String(filters.categoryId || '');
 
-  el.innerHTML = `
-    <button type="button" data-category="" class="${!activeId ? 'is-active' : ''}">Все категории</button>
-    ${categories
-      .filter((c) => c.isActive !== false)
+  const filters = getFiltersFromUrl();
+  const activeId = filters.categoryId;
+  const root = activeId ? getRootCategory(categories, activeId) : null;
+  const rootId = root?.id;
+
+  let html = `
+    <a href="${catalogUrl()}" class="search-sidebar__all">Все категории</a>`;
+
+  if (rootId) {
+    const rootCat = findCategory(categories, rootId);
+    html += `
+      <div class="search-sidebar__section">
+        <a href="${catalogUrl({ categoryId: rootId })}" class="search-sidebar__root ${String(activeId) === String(rootId) ? 'is-active' : ''}">
+          ${escapeHtml(rootCat?.name || '')}
+        </a>
+        <ul class="search-sidebar__children">
+          ${getChildCategories(categories, rootId)
+            .map(
+              (child) => `
+            <li>
+              <a href="${buildSearchLink({ categoryId: child.id })}" class="${String(activeId) === String(child.id) ? 'is-active' : ''}">
+                ${escapeHtml(child.name)}
+              </a>
+            </li>`,
+            )
+            .join('')}
+        </ul>
+      </div>`;
+  } else if (categoryTree.length) {
+    html += `<ul class="search-sidebar__roots">`;
+    html += categoryTree
       .map(
-        (c) => `
-      <button type="button" data-category="${c.id}" class="${String(c.id) === activeId ? 'is-active' : ''}">
-        ${escapeHtml(c.name)}
-      </button>`,
+        (root) => `
+        <li>
+          <a href="${buildSearchLink({ categoryId: root.id })}" class="${String(activeId) === String(root.id) ? 'is-active' : ''}">
+            ${escapeHtml(root.name)}
+          </a>
+        </li>`,
       )
-      .join('')}`;
+      .join('');
+    html += `</ul>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function buildSearchLink(extra = {}) {
+  const filters = getFiltersFromUrl();
+  const qs = new URLSearchParams();
+  const q = extra.q !== undefined ? extra.q : filters.q;
+  const categoryId = extra.categoryId !== undefined ? extra.categoryId : filters.categoryId;
+  if (q) qs.set('q', q);
+  if (categoryId) qs.set('categoryId', categoryId);
+
+  const urlQ = parseQuery();
+  Object.keys(urlQ).forEach((key) => {
+    if (key.startsWith('attr_')) qs.set(key, urlQ[key]);
+  });
+
+  const query = qs.toString();
+  return `/search.html${query ? `?${query}` : ''}`;
 }
 
 function renderFilters() {
@@ -134,9 +211,15 @@ function renderFilters() {
     .join('');
 
   el.innerHTML = `
-    <div class="filters__title">Характеристики</div>
-    ${groups || '<p style="color:#78716c;font-size:0.9375rem">Нет фильтров</p>'}
+    <div class="filters__title">Фильтры</div>
+    ${groups || '<p class="filters__empty">Нет доступных фильтров</p>'}
     <button type="button" class="btn btn--ghost btn--sm filters__clear" id="clear-filters">Сбросить</button>`;
+}
+
+function renderProducts(items) {
+  const area = document.getElementById('products-area');
+  const sorted = sortProducts(items, currentSort);
+  area.innerHTML = renderProductGrid(sorted);
 }
 
 async function loadProducts() {
@@ -151,14 +234,14 @@ async function loadProducts() {
     countEl.textContent = '';
     showEmpty(area, {
       title: 'Начните поиск',
-      text: 'Введите название товара в поле выше или выберите категорию.',
+      text: 'Введите запрос в строке поиска или выберите категорию слева.',
     });
     return;
   }
 
   area.innerHTML = '<div class="spinner" role="status"><span class="sr-only">Загрузка…</span></div>';
 
-  const params = { limit: 24 };
+  const params = { limit: 48, offset: 0 };
   if (query) params.q = query;
   if (filters.categoryId) params.categoryId = filters.categoryId;
   if (filters.attributeValueId.length) params.attributeValueId = filters.attributeValueId;
@@ -167,6 +250,7 @@ async function loadProducts() {
     const res = await getProducts(params);
     const items = res.items || [];
     const total = res.total ?? items.length;
+    currentItems = items;
 
     setMeta(
       query ? `Поиск: ${query}` : 'Поиск товаров',
@@ -183,12 +267,12 @@ async function loadProducts() {
       showEmpty(area, {
         title: 'Ничего не найдено',
         text: 'Попробуйте другой запрос или измените фильтры.',
-        actionHtml: '<a class="btn btn--primary" href="catalog.html">Перейти в каталог</a>',
+        actionHtml: '<a class="btn btn--primary" href="/catalog.html">Перейти в каталог</a>',
       });
       return;
     }
 
-    area.innerHTML = renderProductGrid(items);
+    renderProducts(items);
   } catch (err) {
     showEmpty(area, {
       title: 'Ошибка поиска',
@@ -199,12 +283,9 @@ async function loadProducts() {
 
 function collectParams() {
   const params = {};
-  const input = document.getElementById('search-input');
-  const q = input?.value?.trim();
-  if (q) params.q = q;
-
-  const filters = getFiltersFromUrl();
-  if (filters.categoryId) params.categoryId = filters.categoryId;
+  const q = parseQuery();
+  if (q.q) params.q = q.q;
+  if (q.categoryId) params.categoryId = q.categoryId;
 
   document.querySelectorAll('#filters-panel input[type="checkbox"]:checked').forEach((inputEl) => {
     const key = inputEl.name;
@@ -224,37 +305,27 @@ function collectParams() {
 
 function applyFilters(replace = false) {
   updateQuery(collectParams(), replace);
+  renderCategorySidebar();
+  renderFilters();
   loadProducts();
 }
 
 function bindEvents() {
-  document.getElementById('search-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    applyFilters(true);
-  });
-
-  document.getElementById('category-nav')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-category]');
-    if (!btn) return;
-    const catId = btn.dataset.category;
-    const params = collectParams();
-    if (catId) params.categoryId = catId;
-    else delete params.categoryId;
-    updateQuery(params, false);
-    renderCategoryNav();
-    loadProducts();
-  });
-
   document.getElementById('filters-panel')?.addEventListener('change', debounce(() => applyFilters(), 200));
 
   document.getElementById('filters-panel')?.addEventListener('click', (e) => {
     if (e.target.closest('#clear-filters')) {
-      const q = document.getElementById('search-input')?.value?.trim();
+      const q = parseQuery().q || '';
       history.pushState(null, '', q ? `/search.html?q=${encodeURIComponent(q)}` : '/search.html');
-      renderCategoryNav();
+      renderCategorySidebar();
       renderFilters();
       loadProducts();
     }
+  });
+
+  document.getElementById('search-sort')?.addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    if (currentItems.length) renderProducts(currentItems);
   });
 }
 
