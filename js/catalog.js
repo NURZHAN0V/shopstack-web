@@ -11,9 +11,9 @@ import {
   resolveCategoryId,
   updateCategoryPanelToggleLabel,
 } from './catalog-panel.js';
+import { createProductListLazyLoader } from './product-list-lazy.js';
 import {
   initShell,
-  renderProductGrid,
   showEmpty,
   showLoading,
 } from './shell.js';
@@ -29,6 +29,7 @@ import {
 let categories = [];
 let categoryTree = [];
 let attributes = [];
+let productLoader = null;
 
 async function init() {
   const content = document.getElementById('page-content');
@@ -61,14 +62,42 @@ async function init() {
       </div>
     </div>`;
 
+  productLoader = createProductListLazyLoader({
+    getArea: () => document.getElementById('products-area'),
+    getCountEl: () => document.getElementById('results-count'),
+    perPage: Math.min(Math.max(Number(cfg.storefront?.productsPerPage) || 24, 6), 100),
+    fetchPage: (page) => {
+      const filters = getBrowseFiltersFromUrl();
+      const categoryId = resolveCategoryId(categories, filters);
+      const params = { ...page };
+      if (categoryId) params.categoryId = categoryId;
+      if (filters.q) params.q = filters.q;
+      if (filters.attributeValueId.length) params.attributeValueId = filters.attributeValueId;
+      return getProducts(params);
+    },
+    onEmpty: (area) => {
+      showEmpty(area, {
+        title: 'Товары не найдены',
+        text: 'Попробуйте изменить фильтры или выбрать другую категорию.',
+        actionHtml: '<a class="btn btn--primary" href="/catalog.html">Сбросить фильтры</a>',
+      });
+    },
+    onError: (area, err) => {
+      showEmpty(area, {
+        title: 'Не удалось загрузить каталог',
+        text: err.message || 'Проверьте подключение к API.',
+      });
+    },
+  });
+
   refreshPanel();
-  await loadProducts();
+  await productLoader.load(true);
   bindEvents();
   initCookieBanner();
 
   window.addEventListener('popstate', () => {
     refreshPanel();
-    loadProducts();
+    productLoader?.load(true);
   });
 }
 
@@ -96,50 +125,6 @@ function refreshPanel() {
   updateCategoryPanelToggleLabel(categories, activeId);
 }
 
-async function loadProducts() {
-  const area = document.getElementById('products-area');
-  const countEl = document.getElementById('results-count');
-  if (!area) return;
-
-  area.innerHTML = '<div class="spinner" role="status"><span class="sr-only">Загрузка…</span></div>';
-
-  const filters = getBrowseFiltersFromUrl();
-  const categoryId = resolveCategoryId(categories, filters);
-  const cfg = getCachedStoreConfig();
-  const perPage = Math.min(Math.max(Number(cfg.storefront?.productsPerPage) || 24, 6), 100);
-
-  const params = { limit: perPage, offset: 0 };
-  if (categoryId) params.categoryId = categoryId;
-  if (filters.q) params.q = filters.q;
-  if (filters.attributeValueId.length) params.attributeValueId = filters.attributeValueId;
-
-  try {
-    const res = await getProducts(params);
-    const items = res.items || [];
-    const total = res.total ?? items.length;
-
-    countEl.textContent = total
-      ? `Найдено товаров: ${total}`
-      : 'Товары не найдены';
-
-    if (!items.length) {
-      showEmpty(area, {
-        title: 'Товары не найдены',
-        text: 'Попробуйте изменить фильтры или выбрать другую категорию.',
-        actionHtml: '<a class="btn btn--primary" href="/catalog.html">Сбросить фильтры</a>',
-      });
-      return;
-    }
-
-    area.innerHTML = renderProductGrid(items);
-  } catch (err) {
-    showEmpty(area, {
-      title: 'Не удалось загрузить каталог',
-      text: err.message || 'Проверьте подключение к API.',
-    });
-  }
-}
-
 function applyFilters(replace = false) {
   const filters = getBrowseFiltersFromUrl();
   const categoryId = resolveCategoryId(categories, filters);
@@ -149,7 +134,7 @@ function applyFilters(replace = false) {
 
   updateQuery(collectFilterParamsFromPanel(base), replace);
   refreshPanel();
-  loadProducts();
+  productLoader?.load(true);
 }
 
 function bindEvents() {
@@ -158,7 +143,7 @@ function bindEvents() {
     onClear: () => {
       history.pushState(null, '', '/catalog.html');
       refreshPanel();
-      loadProducts();
+      productLoader?.load(true);
     },
   });
 }

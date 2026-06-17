@@ -448,6 +448,28 @@
   }
 }
 
+.catalog-lazy-status {
+  display: flex;
+  justify-content: center;
+  padding: $space-6 0 $space-2;
+  min-height: 3rem;
+}
+
+.catalog-lazy-status__text {
+  margin: 0;
+  color: $color-text-muted;
+  font-size: 0.875rem;
+
+  &--error {
+    color: $color-danger;
+  }
+}
+
+.catalog-lazy-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
 .catalog-mobile-cats {
   display: none;
 }

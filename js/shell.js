@@ -344,7 +344,7 @@ export function renderProductCard(product, options = {}) {
         <div class="product-card__image-wrap">
           ${
             imgSrc
-              ? `<img class="product-card__image" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(img.alt || product.title)}" decoding="async" ${eagerImage ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'}>`
+              ? `<img class="product-card__image" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(img.alt || product.title)}" decoding="async" referrerpolicy="no-referrer" ${eagerImage ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'}>`
               : `<div class="product-card__image skeleton"></div>`
           }
           <div class="product-card__badges">
