@@ -4,7 +4,6 @@ import {
   getRootCategory,
   loadCategories,
   renderRootList,
-  renderSubcategoryPanel,
 } from './categories.js';
 import {
   initShell,
@@ -44,28 +43,24 @@ async function init() {
 
   content.innerHTML = `
     <div class="catalog-page">
-      <aside class="catalog-sidebar" aria-label="Категории">
-        <div class="catalog-sidebar__title">Категории</div>
-        <nav class="catalog-sidebar__list" id="catalog-sidebar"></nav>
+      <button type="button" class="catalog-panel-toggle" id="catalog-mobile-toggle" aria-expanded="false" aria-controls="catalog-panel">
+        <span id="catalog-mobile-label">Каталог</span>
+        <span aria-hidden="true">▾</span>
+      </button>
+      <aside class="catalog-panel" id="catalog-panel" aria-label="Каталог">
+        <div class="catalog-panel__head">Каталог</div>
+        <div class="catalog-panel__section">
+          <div class="catalog-panel__label">Категории</div>
+          <nav class="catalog-panel__nav" id="catalog-sidebar"></nav>
+        </div>
+        <div class="catalog-panel__section catalog-panel__section--filters" id="filters-panel"></div>
+        <button type="button" class="btn btn--ghost btn--sm catalog-panel__reset" id="clear-filters">Сбросить</button>
       </aside>
       <div class="catalog-main">
-        <div class="catalog-mobile-cats">
-          <button type="button" class="catalog-mobile-cats__toggle" id="catalog-mobile-toggle" aria-expanded="false">
-            <span id="catalog-mobile-label">Категории</span>
-            <span aria-hidden="true">▾</span>
-          </button>
-          <div class="catalog-mobile-cats__panel" id="catalog-mobile-panel"></div>
+        <div class="catalog-toolbar">
+          <div id="results-count" class="catalog-toolbar__count"></div>
         </div>
-        <div id="catalog-subs-panel" class="catalog-subs-panel" hidden></div>
-        <div class="catalog-products-row">
-          <aside id="filters-panel" class="filters" aria-label="Фильтры"></aside>
-          <div>
-            <div class="catalog-toolbar">
-              <div id="results-count" class="catalog-toolbar__count"></div>
-            </div>
-            <div id="products-area"></div>
-          </div>
-        </div>
+        <div id="products-area"></div>
       </div>
     </div>`;
 
@@ -120,8 +115,6 @@ function renderCategoryBrowse() {
   const activeRootId = root?.id || '';
 
   const sidebar = document.getElementById('catalog-sidebar');
-  const mobilePanel = document.getElementById('catalog-mobile-panel');
-  const subsPanel = document.getElementById('catalog-subs-panel');
   const mobileLabel = document.getElementById('catalog-mobile-label');
 
   const rootsHtml = renderRootList(categoryTree, {
@@ -130,24 +123,13 @@ function renderCategoryBrowse() {
   });
 
   if (sidebar) sidebar.innerHTML = rootsHtml;
-  if (mobilePanel) mobilePanel.innerHTML = rootsHtml;
 
   if (mobileLabel) {
     if (activeId) {
       const cat = categories.find((c) => String(c.id) === String(activeId));
-      mobileLabel.textContent = cat?.name || 'Категории';
+      mobileLabel.textContent = cat?.name || 'Каталог';
     } else {
-      mobileLabel.textContent = 'Все товары';
-    }
-  }
-
-  if (subsPanel) {
-    if (activeRootId) {
-      subsPanel.hidden = false;
-      subsPanel.innerHTML = renderSubcategoryPanel(categories, activeRootId, { activeId });
-    } else {
-      subsPanel.hidden = true;
-      subsPanel.innerHTML = '';
+      mobileLabel.textContent = 'Каталог';
     }
   }
 }
@@ -181,9 +163,10 @@ function renderFilters() {
     .join('');
 
   el.innerHTML = `
-    <div class="filters__title">Фильтры</div>
-    ${groups || '<p style="color:var(--text-muted,#78716c);font-size:0.9375rem">Нет доступных фильтров</p>'}
-    <button type="button" class="btn btn--ghost btn--sm filters__clear" id="clear-filters">Сбросить</button>`;
+    <div class="catalog-panel__label">Фильтры</div>
+    <div class="filters filters--embedded">
+      ${groups || '<p class="filters__empty">Нет доступных фильтров</p>'}
+    </div>`;
 }
 
 async function loadProducts() {
@@ -258,10 +241,11 @@ function applyFilters(replace = false) {
 }
 
 function bindEvents() {
-  const panel = document.getElementById('filters-panel');
-  panel?.addEventListener('change', debounce(() => applyFilters(), 200));
+  const filtersPanel = document.getElementById('filters-panel');
+  const catalogPanel = document.getElementById('catalog-panel');
+  filtersPanel?.addEventListener('change', debounce(() => applyFilters(), 200));
 
-  panel?.addEventListener('click', (e) => {
+  catalogPanel?.addEventListener('click', (e) => {
     if (e.target.closest('#clear-filters')) {
       history.pushState(null, '', '/catalog.html');
       renderCategoryBrowse();
@@ -271,9 +255,8 @@ function bindEvents() {
   });
 
   const mobileToggle = document.getElementById('catalog-mobile-toggle');
-  const mobilePanel = document.getElementById('catalog-mobile-panel');
   mobileToggle?.addEventListener('click', () => {
-    const open = mobilePanel?.classList.toggle('is-open');
+    const open = catalogPanel?.classList.toggle('is-open');
     mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 }

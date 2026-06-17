@@ -206,6 +206,13 @@
     width: 100%;
     margin-top: $space-4;
   }
+
+  &--embedded {
+    padding: 0 $space-3;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
 }
 
 .catalog-toolbar {
