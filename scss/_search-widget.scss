@@ -263,11 +263,14 @@
   &__panel {
     display: grid;
     grid-template-columns: 1fr;
+    height: min(72vh, 520px);
     max-height: min(72vh, 520px);
     min-height: 0;
     overflow: hidden;
 
     @media (max-width: #{$bp-md - 1px}) {
+      height: auto;
+      max-height: min(72vh, 520px);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
@@ -275,20 +278,39 @@
 
     @media (min-width: $bp-md) {
       grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
     }
   }
 
   &__history {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     padding: $space-5 $space-5 $space-6;
     border-bottom: 1px solid $color-border;
-    min-height: 0;
+    overflow: hidden;
+
+    @media (max-width: #{$bp-md - 1px}) {
+      overflow: visible;
+      flex: none;
+    }
 
     @media (min-width: $bp-md) {
       border-bottom: none;
       border-right: 1px solid $color-border;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+    }
+  }
+
+  &__history-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+
+    @media (max-width: #{$bp-md - 1px}) {
+      flex: none;
+      overflow: visible;
     }
   }
 
@@ -399,18 +421,39 @@
   }
 
   &__recs {
-    padding: $space-4 $space-4 $space-5;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
+    padding: $space-4 $space-4 $space-5;
+    overflow: hidden;
 
-    @media (min-width: $bp-md) {
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+    @media (max-width: #{$bp-md - 1px}) {
+      overflow: visible;
+      flex: none;
     }
 
     .search-widget__section-title {
+      flex-shrink: 0;
       margin-bottom: $space-3;
       font-size: 1rem;
+    }
+  }
+
+  &__recs-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    margin-inline: -$space-1;
+    padding-inline: $space-1;
+    padding-bottom: $space-1;
+
+    @media (max-width: #{$bp-md - 1px}) {
+      flex: none;
+      overflow: visible;
+      margin: 0;
+      padding: 0;
     }
   }
 

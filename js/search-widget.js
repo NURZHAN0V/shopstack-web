@@ -239,11 +239,15 @@ export function mountSearchWidget(root, options = {}) {
             <h3 class="search-widget__section-title">История</h3>
             <button type="button" class="search-widget__history-clear" id="${inputId}-history-clear" ${history.length ? '' : 'disabled'}>Очистить</button>
           </div>
-          ${renderHistoryList()}
+          <div class="search-widget__history-scroll">
+            ${renderHistoryList()}
+          </div>
         </section>
         <section class="search-widget__recs" aria-label="Рекомендации">
           <h3 class="search-widget__section-title">Рекомендуем для вас</h3>
-          ${renderRecommendations()}
+          <div class="search-widget__recs-scroll">
+            ${renderRecommendations()}
+          </div>
         </section>
       </div>`;
   }
@@ -464,6 +468,9 @@ export function mountSearchWidget(root, options = {}) {
 
   dropdown?.addEventListener('mousedown', (e) => {
     if (e.target.closest('a')) return;
+    if (e.target.closest('.search-widget__recs-scroll, .search-widget__history-scroll, .search-widget__suggestions')) {
+      return;
+    }
     e.preventDefault();
   });
 
