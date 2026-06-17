@@ -48,9 +48,18 @@ async function init() {
     <div class="search-page">
       <div class="search-page__widget" id="search-page-widget"></div>
       <div class="search-layout">
-        <aside class="search-sidebar" aria-label="Фильтры и категории">
-          <nav class="search-sidebar__categories" id="search-categories"></nav>
-          <div id="filters-panel" class="filters filters--search"></div>
+        <button type="button" class="catalog-panel-toggle" id="search-panel-toggle" aria-expanded="false" aria-controls="search-catalog-panel">
+          <span>Каталог</span>
+          <span aria-hidden="true">▾</span>
+        </button>
+        <aside class="catalog-panel" id="search-catalog-panel" aria-label="Каталог">
+          <div class="catalog-panel__head">Каталог</div>
+          <div class="catalog-panel__section">
+            <div class="catalog-panel__label">Категории</div>
+            <nav class="catalog-panel__nav search-sidebar__categories" id="search-categories"></nav>
+          </div>
+          <div class="catalog-panel__section catalog-panel__section--filters" id="filters-panel"></div>
+          <button type="button" class="btn btn--ghost btn--sm catalog-panel__reset" id="clear-filters">Сбросить</button>
         </aside>
         <div class="search-main">
           <div class="search-main__toolbar catalog-toolbar">
@@ -211,9 +220,10 @@ function renderFilters() {
     .join('');
 
   el.innerHTML = `
-    <div class="filters__title">Фильтры</div>
-    ${groups || '<p class="filters__empty">Нет доступных фильтров</p>'}
-    <button type="button" class="btn btn--ghost btn--sm filters__clear" id="clear-filters">Сбросить</button>`;
+    <div class="catalog-panel__label">Фильтры</div>
+    <div class="filters filters--embedded">
+      ${groups || '<p class="filters__empty">Нет доступных фильтров</p>'}
+    </div>`;
 }
 
 function renderProducts(items) {
@@ -313,7 +323,7 @@ function applyFilters(replace = false) {
 function bindEvents() {
   document.getElementById('filters-panel')?.addEventListener('change', debounce(() => applyFilters(), 200));
 
-  document.getElementById('filters-panel')?.addEventListener('click', (e) => {
+  document.getElementById('search-catalog-panel')?.addEventListener('click', (e) => {
     if (e.target.closest('#clear-filters')) {
       const q = parseQuery().q || '';
       history.pushState(null, '', q ? `/search.html?q=${encodeURIComponent(q)}` : '/search.html');
@@ -321,6 +331,13 @@ function bindEvents() {
       renderFilters();
       loadProducts();
     }
+  });
+
+  const panelToggle = document.getElementById('search-panel-toggle');
+  const catalogPanel = document.getElementById('search-catalog-panel');
+  panelToggle?.addEventListener('click', () => {
+    const open = catalogPanel?.classList.toggle('is-open');
+    panelToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
   document.getElementById('search-sort')?.addEventListener('change', (e) => {
