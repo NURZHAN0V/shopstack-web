@@ -1,11 +1,15 @@
 import { getAttributes, getProducts } from './api.js';
+import { buildCategoryTree, loadCategories } from './categories.js';
 import {
-  buildCategoryTree,
-  findCategory,
-  getChildCategories,
-  getRootCategory,
-  loadCategories,
-} from './categories.js';
+  bindCatalogPanel,
+  CATALOG_PANEL_IDS,
+  collectFilterParamsFromPanel,
+  getBrowseFiltersFromUrl,
+  renderCatalogPanelMarkup,
+  renderCategorySidebar,
+  renderFiltersSection,
+  updateCategoryPanelToggleLabel,
+} from './catalog-panel.js';
 import { sortProducts } from './search-suggest.js';
 import { mountSearchWidget } from './search-widget.js';
 import {
@@ -16,9 +20,7 @@ import {
 } from './shell.js';
 import { initCookieBanner } from './cookies.js';
 import {
-  catalogUrl,
   debounce,
-  escapeHtml,
   parseQuery,
   setMeta,
   updateQuery,
@@ -48,19 +50,7 @@ async function init() {
     <div class="search-page">
       <div class="search-page__widget" id="search-page-widget"></div>
       <div class="search-layout">
-        <button type="button" class="catalog-panel-toggle" id="search-panel-toggle" aria-expanded="false" aria-controls="search-catalog-panel">
-          <span>Каталог</span>
-          <span aria-hidden="true">▾</span>
-        </button>
-        <aside class="catalog-panel" id="search-catalog-panel" aria-label="Каталог">
-          <div class="catalog-panel__head">Каталог</div>
-          <div class="catalog-panel__section">
-            <div class="catalog-panel__label">Категории</div>
-            <nav class="catalog-panel__nav search-sidebar__categories" id="search-categories"></nav>
-          </div>
-          <div class="catalog-panel__section catalog-panel__section--filters" id="filters-panel"></div>
-          <button type="button" class="btn btn--ghost btn--sm catalog-panel__reset" id="clear-filters">Сбросить</button>
-        </aside>
+        ${renderCatalogPanelMarkup()}
         <div class="search-main">
           <div class="search-main__toolbar catalog-toolbar">
             <div id="results-count" class="catalog-toolbar__count"></div>
@@ -91,16 +81,14 @@ async function init() {
     `Результаты поиска товаров в ${site.name || 'магазине'}`,
   );
 
-  renderCategorySidebar();
-  renderFilters();
+  refreshPanel();
   await loadProducts();
   bindEvents();
   initCookieBanner();
 
   window.addEventListener('popstate', () => {
     const q = parseQuery();
-    renderCategorySidebar();
-    renderFilters();
+    refreshPanel();
     loadProducts();
     const widgetRoot = document.getElementById('search-page-widget');
     const input = widgetRoot?.querySelector('#search-page-input');
@@ -108,75 +96,8 @@ async function init() {
   });
 }
 
-function getFiltersFromUrl() {
-  const q = parseQuery();
-  const attributeValueId = [];
-  Object.keys(q).forEach((key) => {
-    if (key.startsWith('attr_')) {
-      String(q[key])
-        .split(',')
-        .forEach((v) => attributeValueId.push(v));
-    }
-  });
-  return {
-    categoryId: q.categoryId || '',
-    q: q.q || '',
-    attributeValueId: [...new Set(attributeValueId)],
-  };
-}
-
-function renderCategorySidebar() {
-  const el = document.getElementById('search-categories');
-  if (!el) return;
-
-  const filters = getFiltersFromUrl();
-  const activeId = filters.categoryId;
-  const root = activeId ? getRootCategory(categories, activeId) : null;
-  const rootId = root?.id;
-
-  let html = `
-    <a href="${catalogUrl()}" class="search-sidebar__all">Все категории</a>`;
-
-  if (rootId) {
-    const rootCat = findCategory(categories, rootId);
-    html += `
-      <div class="search-sidebar__section">
-        <a href="${catalogUrl({ categoryId: rootId })}" class="search-sidebar__root ${String(activeId) === String(rootId) ? 'is-active' : ''}">
-          ${escapeHtml(rootCat?.name || '')}
-        </a>
-        <ul class="search-sidebar__children">
-          ${getChildCategories(categories, rootId)
-            .map(
-              (child) => `
-            <li>
-              <a href="${buildSearchLink({ categoryId: child.id })}" class="${String(activeId) === String(child.id) ? 'is-active' : ''}">
-                ${escapeHtml(child.name)}
-              </a>
-            </li>`,
-            )
-            .join('')}
-        </ul>
-      </div>`;
-  } else if (categoryTree.length) {
-    html += `<ul class="search-sidebar__roots">`;
-    html += categoryTree
-      .map(
-        (root) => `
-        <li>
-          <a href="${buildSearchLink({ categoryId: root.id })}" class="${String(activeId) === String(root.id) ? 'is-active' : ''}">
-            ${escapeHtml(root.name)}
-          </a>
-        </li>`,
-      )
-      .join('');
-    html += `</ul>`;
-  }
-
-  el.innerHTML = html;
-}
-
 function buildSearchLink(extra = {}) {
-  const filters = getFiltersFromUrl();
+  const filters = getBrowseFiltersFromUrl();
   const qs = new URLSearchParams();
   const q = extra.q !== undefined ? extra.q : filters.q;
   const categoryId = extra.categoryId !== undefined ? extra.categoryId : filters.categoryId;
@@ -192,38 +113,27 @@ function buildSearchLink(extra = {}) {
   return `/search.html${query ? `?${query}` : ''}`;
 }
 
-function renderFilters() {
-  const el = document.getElementById('filters-panel');
-  if (!el) return;
-  const filters = getFiltersFromUrl();
-  const selected = new Set(filters.attributeValueId.map(String));
+function buildCategoryLink(categoryId) {
+  return buildSearchLink({ categoryId: categoryId || '' });
+}
 
-  const groups = attributes
-    .filter((a) => a.attributeValues?.length)
-    .map((attr) => {
-      const options = attr.attributeValues
-        .map((val) => {
-          const id = String(val.id);
-          return `
-          <label class="filters__option">
-            <input type="checkbox" name="attr_${attr.id}" value="${id}" ${selected.has(id) ? 'checked' : ''}>
-            <span>${escapeHtml(val.name)}</span>
-          </label>`;
-        })
-        .join('');
-      return `
-        <div class="filters__group">
-          <div class="filters__label">${escapeHtml(attr.name)}</div>
-          <div class="filters__options">${options}</div>
-        </div>`;
-    })
-    .join('');
+function refreshPanel() {
+  const filters = getBrowseFiltersFromUrl();
 
-  el.innerHTML = `
-    <div class="catalog-panel__label">Фильтры</div>
-    <div class="filters filters--embedded">
-      ${groups || '<p class="filters__empty">Нет доступных фильтров</p>'}
-    </div>`;
+  renderCategorySidebar(document.getElementById(CATALOG_PANEL_IDS.categories), {
+    categories,
+    categoryTree,
+    activeCategoryId: filters.categoryId,
+    allHref: buildSearchLink({ categoryId: '' }),
+    buildCategoryLink,
+  });
+
+  renderFiltersSection(document.getElementById(CATALOG_PANEL_IDS.filters), {
+    attributes,
+    selectedIds: filters.attributeValueId,
+  });
+
+  updateCategoryPanelToggleLabel(categories, filters.categoryId);
 }
 
 function renderProducts(items) {
@@ -237,7 +147,7 @@ async function loadProducts() {
   const countEl = document.getElementById('results-count');
   if (!area) return;
 
-  const filters = getFiltersFromUrl();
+  const filters = getBrowseFiltersFromUrl();
   const query = filters.q.trim();
 
   if (!query && !filters.categoryId && !filters.attributeValueId.length) {
@@ -291,53 +201,26 @@ async function loadProducts() {
   }
 }
 
-function collectParams() {
-  const params = {};
-  const q = parseQuery();
-  if (q.q) params.q = q.q;
-  if (q.categoryId) params.categoryId = q.categoryId;
-
-  document.querySelectorAll('#filters-panel input[type="checkbox"]:checked').forEach((inputEl) => {
-    const key = inputEl.name;
-    if (!params[key]) params[key] = [];
-    if (!Array.isArray(params[key])) params[key] = [params[key]];
-    params[key].push(inputEl.value);
-  });
-
-  Object.keys(params).forEach((key) => {
-    if (key.startsWith('attr_') && Array.isArray(params[key])) {
-      params[key] = params[key].join(',');
-    }
-  });
-
-  return params;
-}
-
 function applyFilters(replace = false) {
-  updateQuery(collectParams(), replace);
-  renderCategorySidebar();
-  renderFilters();
+  const filters = getBrowseFiltersFromUrl();
+  const base = {};
+  if (filters.q) base.q = filters.q;
+  if (filters.categoryId) base.categoryId = filters.categoryId;
+
+  updateQuery(collectFilterParamsFromPanel(base), replace);
+  refreshPanel();
   loadProducts();
 }
 
 function bindEvents() {
-  document.getElementById('filters-panel')?.addEventListener('change', debounce(() => applyFilters(), 200));
-
-  document.getElementById('search-catalog-panel')?.addEventListener('click', (e) => {
-    if (e.target.closest('#clear-filters')) {
+  bindCatalogPanel({
+    onFilterChange: debounce(() => applyFilters(), 200),
+    onClear: () => {
       const q = parseQuery().q || '';
       history.pushState(null, '', q ? `/search.html?q=${encodeURIComponent(q)}` : '/search.html');
-      renderCategorySidebar();
-      renderFilters();
+      refreshPanel();
       loadProducts();
-    }
-  });
-
-  const panelToggle = document.getElementById('search-panel-toggle');
-  const catalogPanel = document.getElementById('search-catalog-panel');
-  panelToggle?.addEventListener('click', () => {
-    const open = catalogPanel?.classList.toggle('is-open');
-    panelToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    },
   });
 
   document.getElementById('search-sort')?.addEventListener('change', (e) => {

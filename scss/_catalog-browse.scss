@@ -317,6 +317,108 @@
   }
 }
 
+.catalog-panel-nav {
+  &__all {
+    display: block;
+    padding: $space-3 $space-4;
+    margin-inline: $space-2;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: $color-primary;
+    text-decoration: none;
+    border-radius: $radius-sm;
+    border-left: 3px solid transparent;
+    transition: background $transition, color $transition;
+
+    &:hover {
+      color: $color-primary-hover;
+      text-decoration: none;
+      background: rgb(254 243 199 / 40%);
+    }
+
+    &.is-active {
+      color: $color-primary-hover;
+      background: $color-primary-light;
+      border-left-color: $color-primary;
+    }
+  }
+
+  &__section {
+    border-top: 1px solid $color-border;
+    margin-top: $space-1;
+    padding-top: $space-2;
+  }
+
+  &__root {
+    display: block;
+    padding: $space-3 $space-4;
+    margin-inline: $space-2;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: $color-text;
+    text-decoration: none;
+    border-radius: $radius-sm;
+    border-left: 3px solid transparent;
+    transition: background $transition, color $transition;
+
+    &:hover {
+      color: $color-primary;
+      text-decoration: none;
+      background: rgb(254 243 199 / 40%);
+    }
+
+    &.is-active {
+      color: $color-primary-hover;
+      background: $color-primary-light;
+      border-left-color: $color-primary;
+    }
+  }
+
+  &__children,
+  &__roots {
+    list-style: none;
+    margin: 0;
+    padding: 0 $space-2 $space-2;
+
+    a {
+      display: block;
+      padding: $space-2 $space-4;
+      font-size: 0.875rem;
+      color: $color-text-muted;
+      text-decoration: none;
+      border-radius: $radius-sm;
+      border-left: 3px solid transparent;
+      transition: background $transition, color $transition;
+
+      &:hover {
+        color: $color-primary;
+        background: rgb(254 243 199 / 40%);
+        text-decoration: none;
+      }
+
+      &.is-active {
+        color: $color-primary-hover;
+        font-weight: 600;
+        background: $color-primary-light;
+        border-left-color: $color-primary;
+      }
+    }
+  }
+}
+
+.filters__empty {
+  padding: 0 $space-3;
+  color: $color-text-muted;
+  font-size: 0.9375rem;
+}
+
+.filters--embedded {
+  padding: 0 $space-3;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
 .catalog-sidebar {
   display: none;
 }

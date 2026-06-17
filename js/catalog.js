@@ -1,10 +1,16 @@
 import { getAttributes, getProducts } from './api.js';
+import { buildCategoryTree, loadCategories } from './categories.js';
 import {
-  buildCategoryTree,
-  getRootCategory,
-  loadCategories,
-  renderRootList,
-} from './categories.js';
+  bindCatalogPanel,
+  CATALOG_PANEL_IDS,
+  collectFilterParamsFromPanel,
+  getBrowseFiltersFromUrl,
+  renderCatalogPanelMarkup,
+  renderCategorySidebar,
+  renderFiltersSection,
+  resolveCategoryId,
+  updateCategoryPanelToggleLabel,
+} from './catalog-panel.js';
 import {
   initShell,
   renderProductGrid,
@@ -13,9 +19,8 @@ import {
 } from './shell.js';
 import { initCookieBanner } from './cookies.js';
 import {
+  catalogUrl,
   debounce,
-  escapeHtml,
-  parseQuery,
   setMeta,
   updateQuery,
 } from './utils.js';
@@ -43,19 +48,7 @@ async function init() {
 
   content.innerHTML = `
     <div class="catalog-page">
-      <button type="button" class="catalog-panel-toggle" id="catalog-mobile-toggle" aria-expanded="false" aria-controls="catalog-panel">
-        <span id="catalog-mobile-label">Каталог</span>
-        <span aria-hidden="true">▾</span>
-      </button>
-      <aside class="catalog-panel" id="catalog-panel" aria-label="Каталог">
-        <div class="catalog-panel__head">Каталог</div>
-        <div class="catalog-panel__section">
-          <div class="catalog-panel__label">Категории</div>
-          <nav class="catalog-panel__nav" id="catalog-sidebar"></nav>
-        </div>
-        <div class="catalog-panel__section catalog-panel__section--filters" id="filters-panel"></div>
-        <button type="button" class="btn btn--ghost btn--sm catalog-panel__reset" id="clear-filters">Сбросить</button>
-      </aside>
+      ${renderCatalogPanelMarkup()}
       <div class="catalog-main">
         <div class="catalog-toolbar">
           <div id="results-count" class="catalog-toolbar__count"></div>
@@ -64,109 +57,39 @@ async function init() {
       </div>
     </div>`;
 
-  renderCategoryBrowse();
-  renderFilters();
+  refreshPanel();
   await loadProducts();
   bindEvents();
   initCookieBanner();
 
   window.addEventListener('popstate', () => {
-    renderCategoryBrowse();
-    renderFilters();
+    refreshPanel();
     loadProducts();
   });
 }
 
-function getFiltersFromUrl() {
-  const q = parseQuery();
-  const attributeValueId = [];
-  Object.keys(q).forEach((key) => {
-    if (key.startsWith('attr_')) {
-      const vals = String(q[key]).split(',').filter(Boolean);
-      vals.forEach((v) => attributeValueId.push(v));
-    }
-  });
-  if (q.attributeValueId) {
-    String(q.attributeValueId)
-      .split(',')
-      .forEach((v) => attributeValueId.push(v));
-  }
-  return {
-    categoryId: q.categoryId || '',
-    categorySlug: q.category || '',
-    q: q.q || '',
-    attributeValueId: [...new Set(attributeValueId)],
-  };
+function buildCategoryLink(categoryId) {
+  return catalogUrl(categoryId ? { categoryId } : {});
 }
 
-function resolveCategoryId(filters) {
-  if (filters.categoryId) return filters.categoryId;
-  if (filters.categorySlug) {
-    const cat = categories.find((c) => c.slug === filters.categorySlug);
-    return cat?.id || '';
-  }
-  return '';
-}
+function refreshPanel() {
+  const filters = getBrowseFiltersFromUrl();
+  const activeId = resolveCategoryId(categories, filters);
 
-function renderCategoryBrowse() {
-  const filters = getFiltersFromUrl();
-  const activeId = resolveCategoryId(filters);
-  const root = activeId ? getRootCategory(categories, activeId) : null;
-  const activeRootId = root?.id || '';
-
-  const sidebar = document.getElementById('catalog-sidebar');
-  const mobileLabel = document.getElementById('catalog-mobile-label');
-
-  const rootsHtml = renderRootList(categoryTree, {
-    activeRootId,
-    onAll: !activeId,
+  renderCategorySidebar(document.getElementById(CATALOG_PANEL_IDS.categories), {
+    categories,
+    categoryTree,
+    activeCategoryId: activeId,
+    allHref: '/catalog.html',
+    buildCategoryLink,
   });
 
-  if (sidebar) sidebar.innerHTML = rootsHtml;
+  renderFiltersSection(document.getElementById(CATALOG_PANEL_IDS.filters), {
+    attributes,
+    selectedIds: filters.attributeValueId,
+  });
 
-  if (mobileLabel) {
-    if (activeId) {
-      const cat = categories.find((c) => String(c.id) === String(activeId));
-      mobileLabel.textContent = cat?.name || 'Каталог';
-    } else {
-      mobileLabel.textContent = 'Каталог';
-    }
-  }
-}
-
-function renderFilters() {
-  const el = document.getElementById('filters-panel');
-  if (!el) return;
-  const filters = getFiltersFromUrl();
-  const selected = new Set(filters.attributeValueId.map(String));
-
-  const groups = attributes
-    .filter((a) => a.attributeValues?.length)
-    .map((attr) => {
-      const options = attr.attributeValues
-        .map((val) => {
-          const id = String(val.id);
-          const checked = selected.has(id) ? 'checked' : '';
-          return `
-          <label class="filters__option">
-            <input type="checkbox" name="attr_${attr.id}" value="${id}" ${checked}>
-            <span>${escapeHtml(val.name)}</span>
-          </label>`;
-        })
-        .join('');
-      return `
-        <div class="filters__group">
-          <div class="filters__label">${escapeHtml(attr.name)}</div>
-          <div class="filters__options">${options}</div>
-        </div>`;
-    })
-    .join('');
-
-  el.innerHTML = `
-    <div class="catalog-panel__label">Фильтры</div>
-    <div class="filters filters--embedded">
-      ${groups || '<p class="filters__empty">Нет доступных фильтров</p>'}
-    </div>`;
+  updateCategoryPanelToggleLabel(categories, activeId);
 }
 
 async function loadProducts() {
@@ -176,8 +99,8 @@ async function loadProducts() {
 
   area.innerHTML = '<div class="spinner" role="status"><span class="sr-only">Загрузка…</span></div>';
 
-  const filters = getFiltersFromUrl();
-  const categoryId = resolveCategoryId(filters);
+  const filters = getBrowseFiltersFromUrl();
+  const categoryId = resolveCategoryId(categories, filters);
 
   const params = { limit: 24, offset: 0 };
   if (categoryId) params.categoryId = categoryId;
@@ -211,53 +134,26 @@ async function loadProducts() {
   }
 }
 
-function collectFilterParams() {
-  const params = {};
-  const q = parseQuery();
-  if (q.categoryId) params.categoryId = q.categoryId;
-  if (q.category) params.category = q.category;
-  if (q.q) params.q = q.q;
-
-  document.querySelectorAll('#filters-panel input[type="checkbox"]:checked').forEach((input) => {
-    const key = input.name;
-    if (!params[key]) params[key] = [];
-    if (!Array.isArray(params[key])) params[key] = [params[key]];
-    params[key].push(input.value);
-  });
-
-  Object.keys(params).forEach((key) => {
-    if (key.startsWith('attr_') && Array.isArray(params[key])) {
-      params[key] = params[key].join(',');
-    }
-  });
-
-  return params;
-}
-
 function applyFilters(replace = false) {
-  const params = collectFilterParams();
-  updateQuery(params, replace);
+  const filters = getBrowseFiltersFromUrl();
+  const categoryId = resolveCategoryId(categories, filters);
+  const base = {};
+  if (categoryId) base.categoryId = categoryId;
+  if (filters.q) base.q = filters.q;
+
+  updateQuery(collectFilterParamsFromPanel(base), replace);
+  refreshPanel();
   loadProducts();
 }
 
 function bindEvents() {
-  const filtersPanel = document.getElementById('filters-panel');
-  const catalogPanel = document.getElementById('catalog-panel');
-  filtersPanel?.addEventListener('change', debounce(() => applyFilters(), 200));
-
-  catalogPanel?.addEventListener('click', (e) => {
-    if (e.target.closest('#clear-filters')) {
+  bindCatalogPanel({
+    onFilterChange: debounce(() => applyFilters(), 200),
+    onClear: () => {
       history.pushState(null, '', '/catalog.html');
-      renderCategoryBrowse();
-      renderFilters();
+      refreshPanel();
       loadProducts();
-    }
-  });
-
-  const mobileToggle = document.getElementById('catalog-mobile-toggle');
-  mobileToggle?.addEventListener('click', () => {
-    const open = catalogPanel?.classList.toggle('is-open');
-    mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    },
   });
 }
 
