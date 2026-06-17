@@ -252,6 +252,7 @@
     left: 50%;
     z-index: 10;
     width: min(920px, calc(100vw - #{$space-8}));
+    max-height: min(72vh, 520px);
     transform: translateX(-50%);
     background: $color-surface;
     border-radius: $radius-lg;
@@ -263,20 +264,31 @@
     display: grid;
     grid-template-columns: 1fr;
     max-height: min(72vh, 520px);
+    min-height: 0;
+    overflow: hidden;
+
+    @media (max-width: #{$bp-md - 1px}) {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
 
     @media (min-width: $bp-md) {
-      grid-template-columns: minmax(200px, 280px) 1fr;
+      grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
     }
   }
 
   &__history {
     padding: $space-5 $space-5 $space-6;
     border-bottom: 1px solid $color-border;
-    overflow-y: auto;
+    min-height: 0;
 
     @media (min-width: $bp-md) {
       border-bottom: none;
       border-right: 1px solid $color-border;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
   }
 
@@ -388,7 +400,13 @@
 
   &__recs {
     padding: $space-4 $space-4 $space-5;
-    overflow-y: auto;
+    min-height: 0;
+
+    @media (min-width: $bp-md) {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
 
     .search-widget__section-title {
       margin-bottom: $space-3;
@@ -497,6 +515,8 @@
   &__suggestions {
     max-height: min(70vh, 480px);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     padding: $space-2 0;
   }
 
