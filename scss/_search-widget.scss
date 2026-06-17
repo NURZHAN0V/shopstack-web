@@ -43,16 +43,17 @@
     height: var(--search-bar-height);
     padding: 0;
     background: $color-surface;
-    border: 1px solid $color-border;
+    border: 1px solid $color-primary;
     border-radius: $radius-full;
     overflow: visible;
     transition: border-color $transition, box-shadow $transition;
+
+    &:hover {
+      border-color: $color-primary-hover;
+    }
   }
 
-  &.is-active:not(.is-scope-open) &__bar {
-    border-color: $color-primary;
-  }
-
+  &.is-active:not(.is-scope-open) &__bar,
   &.is-scope-open &__bar {
     border-color: $color-primary;
   }
