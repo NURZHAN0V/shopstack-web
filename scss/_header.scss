@@ -18,9 +18,6 @@
     min-height: var(--ss-header-height);
     padding-block: $space-3;
     background: $color-surface;
-    border-bottom: 1px solid $color-border;
-    box-shadow: $shadow-sm;
-    transition: box-shadow $transition;
 
     @media (min-width: $bp-md) {
       grid-template-columns: auto minmax(280px, 1fr) auto;
