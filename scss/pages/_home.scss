@@ -1,7 +1,7 @@
 @use '../variables' as *;
 
 .hero {
-  margin-bottom: $space-10;
+  margin-bottom: 0;
   border-radius: $radius-lg;
   overflow: hidden;
   background: $color-text;
@@ -95,9 +95,9 @@
   background: $color-surface;
   border: 1px solid $color-border;
   border-radius: $radius-lg;
-  padding: $space-8;
-  margin-bottom: $space-10;
+  padding: clamp(#{$space-6}, 5vw, #{$space-10});
   text-align: center;
+  box-shadow: $shadow-sm;
 
   &__title {
     font-size: clamp(1.25rem, 3vw, 1.75rem);
@@ -114,7 +114,7 @@
 }
 
 .home-categories {
-  margin-bottom: $space-10;
+  margin-bottom: 0;
 
   &__grid {
     display: grid;

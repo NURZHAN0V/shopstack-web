@@ -12,8 +12,7 @@ async function init() {
 
   const { slug } = parseQuery();
   if (!slug) {
-    content.innerHTML = '<div class="container"></div>';
-    showEmpty(content.querySelector('.container'), {
+    showEmpty(content, {
       title: 'Страница не найдена',
       text: 'Укажите корректный адрес страницы.',
       actionHtml: '<a class="btn btn--primary" href="index.html">На главную</a>',
@@ -30,8 +29,7 @@ async function init() {
   }
 
   if (!page) {
-    content.innerHTML = '<div class="container"></div>';
-    showEmpty(content.querySelector('.container'), {
+    showEmpty(content, {
       title: 'Страница не найдена',
       text: 'Запрошенная страница не существует или не опубликована.',
       actionHtml: '<a class="btn btn--primary" href="index.html">На главную</a>',
@@ -44,7 +42,7 @@ async function init() {
   setMeta(page.metaTitle || page.title, page.metaDescription || '');
 
   content.innerHTML = `
-    <div class="container content-page">
+    <div class="content-page">
       <nav class="breadcrumb" aria-label="Хлебные крошки">
         <a href="index.html">Главная</a>
         <span class="breadcrumb__sep">${escapeHtml(page.title)}</span>

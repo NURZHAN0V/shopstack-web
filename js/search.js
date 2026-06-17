@@ -33,14 +33,9 @@ async function init() {
   ]);
 
   content.innerHTML = `
-    <div class="container">
-      <div class="search-header">
-        <h1 class="page-title">Поиск</h1>
-        <p class="page-lead" id="search-lead">Введите запрос для поиска товаров по названию.</p>
-      </div>
       <form class="search-form-inline" id="search-form" role="search">
         <label class="sr-only" for="search-input">Поиск</label>
-        <input id="search-input" type="search" name="q" placeholder="Название товара…" value="${escapeHtml(initial.q || '')}" autocomplete="off">
+        <input id="search-input" type="search" name="q" placeholder="Поиск товаров…" value="${escapeHtml(initial.q || '')}" autocomplete="off">
         <button type="submit" class="btn btn--primary">Искать</button>
       </form>
       <div id="category-nav" class="category-nav"></div>
@@ -52,8 +47,7 @@ async function init() {
           </div>
           <div id="products-area"></div>
         </div>
-      </div>
-    </div>`;
+      </div>`;
 
   setMeta(
     initial.q ? `Поиск: ${initial.q} — ${site.name}` : `Поиск — ${site.name}`,
@@ -148,7 +142,6 @@ function renderFilters() {
 async function loadProducts() {
   const area = document.getElementById('products-area');
   const countEl = document.getElementById('results-count');
-  const leadEl = document.getElementById('search-lead');
   if (!area) return;
 
   const filters = getFiltersFromUrl();
@@ -161,10 +154,6 @@ async function loadProducts() {
       text: 'Введите название товара в поле выше или выберите категорию.',
     });
     return;
-  }
-
-  if (leadEl && query) {
-    leadEl.innerHTML = `Результаты по запросу: <span class="search-header__query">${escapeHtml(query)}</span>`;
   }
 
   area.innerHTML = '<div class="spinner" role="status"><span class="sr-only">Загрузка…</span></div>';
@@ -185,7 +174,9 @@ async function loadProducts() {
     );
 
     countEl.textContent = total
-      ? `Найдено: ${total}`
+      ? query
+        ? `Найдено: ${total} по запросу «${query}»`
+        : `Найдено: ${total}`
       : 'Ничего не найдено';
 
     if (!items.length) {
@@ -259,7 +250,7 @@ function bindEvents() {
   document.getElementById('filters-panel')?.addEventListener('click', (e) => {
     if (e.target.closest('#clear-filters')) {
       const q = document.getElementById('search-input')?.value?.trim();
-      history.pushState(null, '', q ? `search.html?q=${encodeURIComponent(q)}` : 'search.html');
+      history.pushState(null, '', q ? `/search.html?q=${encodeURIComponent(q)}` : '/search.html');
       renderCategoryNav();
       renderFilters();
       loadProducts();

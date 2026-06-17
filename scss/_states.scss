@@ -2,7 +2,7 @@
 
 .state {
   text-align: center;
-  padding: $space-16 $space-6;
+  padding: clamp(#{$space-10}, 8vw, #{$space-16}) $space-4;
 
   &__icon {
     width: 56px;

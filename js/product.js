@@ -10,10 +10,11 @@ import {
   effectivePrice,
   escapeHtml,
   formatPrice,
+  getProductKeyFromLocation,
   isOutOfStock,
   mediaUrl,
   oldPrice,
-  parseQuery,
+  productUrl,
   setMeta,
 } from './utils.js';
 
@@ -24,13 +25,10 @@ async function init() {
   const shell = await initShell({ activeNav: '' });
   if (shell.maintenance) return;
 
-  const { slug, id } = parseQuery();
-  const key = slug || id;
+  const key = getProductKeyFromLocation();
 
   if (!key) {
-    content.innerHTML = '<div class="container"></div>';
-    const box = content.querySelector('.container');
-    showEmpty(box, {
+    showEmpty(content, {
       title: 'Товар не указан',
       text: 'Перейдите в каталог и выберите товар.',
       actionHtml: '<a class="btn btn--primary" href="catalog.html">Каталог</a>',
@@ -43,9 +41,7 @@ async function init() {
   try {
     product = await getProduct(key);
   } catch (err) {
-    content.innerHTML = '<div class="container"></div>';
-    const box = content.querySelector('.container');
-    showEmpty(box, {
+    showEmpty(content, {
       title: err.status === 404 ? 'Товар недоступен' : 'Не удалось загрузить товар',
       text:
         err.status === 404
@@ -62,8 +58,8 @@ async function init() {
   const description = product.metaDescription || stripHtml(product.description).slice(0, 160);
   setMeta(title, description);
 
-  if (slug && product.slug && slug !== product.slug) {
-    history.replaceState(null, '', `product.html?slug=${encodeURIComponent(product.slug)}`);
+  if (product.slug || product.id) {
+    history.replaceState(null, '', productUrl(product.slug, product.id));
   }
 
   const images = (product.productImages || []).filter((img) => !img.isVideo);
@@ -74,7 +70,6 @@ async function init() {
   const category = product.category;
 
   content.innerHTML = `
-    <div class="container">
       <nav class="breadcrumb" aria-label="Хлебные крошки">
         <a href="index.html">Главная</a>
         <span class="breadcrumb__sep"><a href="catalog.html">Каталог</a></span>
@@ -92,7 +87,7 @@ async function init() {
             <div class="product-page__main-image" id="main-image">
               ${
                 mainImage
-                  ? `<img src="${escapeHtml(mediaUrl(mainImage.url))}" alt="${escapeHtml(mainImage.alt || product.title)}" id="gallery-main-img">`
+                  ? `<img src="${escapeHtml(mediaUrl(mainImage.url))}" alt="${escapeHtml(mainImage.alt || product.title)}" id="gallery-main-img" decoding="async" fetchpriority="high">`
                   : '<div class="skeleton" style="width:100%;height:100%"></div>'
               }
             </div>
@@ -130,7 +125,7 @@ async function init() {
 
         ${
           product.description
-            ? `<section style="margin-top:3rem">
+            ? `<section class="product-page__description-block">
             <h2 class="section-title">Описание</h2>
             <div class="product-page__description">${product.description}</div>
           </section>`
@@ -141,8 +136,7 @@ async function init() {
           <h2 class="section-title">Похожие товары</h2>
           <div id="related-products"><div class="spinner"></div></div>
         </section>
-      </article>
-    </div>`;
+      </article>`;
 
   bindGallery();
   loadRelated(product);
@@ -155,33 +149,80 @@ function stripHtml(html) {
   return tmp.textContent || '';
 }
 
-function renderSpecs(product) {
-  const attrs = product.productAttributes || [];
-  const specs = product.specifications;
+function formatUnit(unit) {
+  const map = { piece: 'шт.', pcs: 'шт.', kg: 'кг', l: 'л' };
+  return map[unit] || unit;
+}
+
+function formatDimension(value) {
+  return value > 0 ? String(value).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') : '—';
+}
+
+function buildSpecRows(product) {
   const rows = [];
 
-  attrs.forEach((pa) => {
+  if (product.category?.name) {
+    rows.push(['Категория', product.category.name]);
+  }
+
+  const extraCategories = (product.productCategories || [])
+    .map((pc) => pc.category?.name)
+    .filter((name) => name && name !== product.category?.name);
+  if (extraCategories.length) {
+    rows.push(['Также в разделах', [...new Set(extraCategories)].join(', ')]);
+  }
+
+  if (product.brand?.name) rows.push(['Бренд', product.brand.name]);
+  if (product.supplier?.name) rows.push(['Поставщик', product.supplier.name]);
+
+  const tags = Array.isArray(product.tags) ? product.tags.filter(Boolean) : [];
+  if (tags.length) rows.push(['Теги', tags.join(', ')]);
+
+  if (product.unit) rows.push(['Единица', formatUnit(product.unit)]);
+
+  if (product.weight > 0) rows.push(['Вес', `${formatDimension(product.weight)} кг`]);
+
+  if (product.length > 0 || product.width > 0 || product.height > 0) {
+    rows.push([
+      'Габариты (Д×Ш×В)',
+      `${formatDimension(product.length)} × ${formatDimension(product.width)} × ${formatDimension(product.height)} см`,
+    ]);
+  }
+
+  if (product.deliveryTime?.trim()) {
+    rows.push(['Срок доставки', product.deliveryTime.trim()]);
+  }
+
+  (product.productAttributes || []).forEach((pa) => {
     const name = pa.attribute?.name || pa.Attribute?.name;
     const value = pa.attributeValue?.name || pa.AttributeValue?.name;
     if (name && value) rows.push([name, value]);
   });
 
-  if (specs && typeof specs === 'object') {
-    Object.entries(specs).forEach(([k, v]) => {
-      if (v != null && v !== '') rows.push([k, String(v)]);
+  if (product.specifications && typeof product.specifications === 'object') {
+    Object.entries(product.specifications).forEach(([key, value]) => {
+      if (value != null && value !== '') rows.push([key, String(value)]);
     });
   }
 
+  return rows;
+}
+
+function renderSpecs(product) {
+  const rows = buildSpecRows(product);
   if (!rows.length) return '';
 
   return `
-    <div class="product-page__specs">
-      <table>
-        <tbody>
-          ${rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`;
+    <section class="product-page__specs-block" aria-labelledby="product-specs-title">
+      <h2 class="product-page__specs-title" id="product-specs-title">Характеристики</h2>
+      <div class="product-page__specs">
+        <table>
+          <tbody>
+            ${rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
 }
 
 function bindGallery() {
@@ -206,7 +247,7 @@ async function loadRelated(product) {
       section?.classList.add('app-hidden');
       return;
     }
-    el.innerHTML = renderProductGrid(items);
+    el.innerHTML = renderProductGrid(items, { eagerImage: true });
   } catch {
     section?.classList.add('app-hidden');
   }

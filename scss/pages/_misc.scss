@@ -66,7 +66,9 @@
   left: 0;
   right: 0;
   z-index: 200;
-  padding: $space-4;
+  padding: $space-4 max(var(--ss-container-padding), env(safe-area-inset-right, 0px))
+    max($space-4, env(safe-area-inset-bottom, 0px))
+    max(var(--ss-container-padding), env(safe-area-inset-left, 0px));
   transform: translateY(100%);
   transition: transform 0.3s ease;
 

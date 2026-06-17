@@ -26,10 +26,7 @@ async function init() {
     .filter((c) => c.isActive !== false && !c.parentId)
     .slice(0, 8);
 
-  const heroHtml =
-    activeSlides.length > 0
-      ? renderHero(activeSlides)
-      : renderWelcome(site);
+  const heroHtml = activeSlides.length > 0 ? renderHero(activeSlides) : '';
 
   const categoriesHtml =
     topCategories.length > 0
@@ -53,27 +50,18 @@ async function init() {
   const productsHtml = products.length
     ? `
     <section>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <h2 class="section-title" style="margin:0">Популярные товары</h2>
+      <div class="section-head">
+        <h2 class="section-title">Популярные товары</h2>
         <a class="btn btn--ghost btn--sm" href="catalog.html">Весь каталог</a>
       </div>
       ${renderProductGrid(products)}
     </section>`
     : '';
 
-  content.innerHTML = heroHtml + categoriesHtml + productsHtml;
+  content.innerHTML = `<div class="section-stack">${heroHtml}${categoriesHtml}${productsHtml}</div>`;
   initCookieBanner();
 
   if (activeSlides.length > 1) initHeroSlider();
-}
-
-function renderWelcome(site) {
-  return `
-    <section class="welcome">
-      <h1 class="welcome__title">${escapeHtml(site.name || 'Добро пожаловать')}</h1>
-      <p class="welcome__text">${escapeHtml(site.tagline || 'Откройте для себя наш ассортимент качественных товаров.')}</p>
-      <a class="btn btn--primary" href="catalog.html">Перейти в каталог</a>
-    </section>`;
 }
 
 function slideImage(slide) {

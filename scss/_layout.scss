@@ -1,17 +1,44 @@
 @use 'variables' as *;
 
-.container {
-  width: min(100% - #{$space-8}, #{$container-max});
+.container,
+.page-content {
+  width: 100%;
+  max-width: var(--ss-container-max);
   margin-inline: auto;
+  padding-inline: max(var(--ss-container-padding), env(safe-area-inset-left, 0px))
+    max(var(--ss-container-padding), env(safe-area-inset-right, 0px));
 }
 
 .page-main {
   flex: 1;
-  padding-block: $space-8;
+  padding-block: var(--ss-page-gap);
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
 
   @media (min-width: $bp-md) {
-    padding-block: $space-10;
+    gap: $space-8;
   }
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  margin-bottom: $space-6;
+
+  .section-title {
+    margin-bottom: 0;
+  }
+}
+
+.section-stack > * + * {
+  margin-top: var(--ss-page-gap);
 }
 
 .page-title {

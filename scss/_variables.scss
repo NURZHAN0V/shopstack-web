@@ -40,6 +40,7 @@ $space-12: 3rem;
 $space-16: 4rem;
 
 $container-max: 1200px;
+$container-padding: clamp(1rem, 4vw, 2rem);
 $header-height: 64px;
 
 $bp-sm: 640px;
