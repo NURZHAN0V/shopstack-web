@@ -30,32 +30,6 @@
     }
   }
 
-  &--catalog-open &__inner {
-    border-bottom-color: transparent;
-    box-shadow: none;
-
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      background: rgb(28 25 23 / 44%);
-      pointer-events: auto;
-    }
-  }
-
-  &--catalog-open &__logo,
-  &--catalog-open &__search-wrap,
-  &--catalog-open &__right {
-    pointer-events: none;
-  }
-
-  &--catalog-open .catalog-trigger {
-    position: relative;
-    z-index: 2;
-    pointer-events: auto;
-  }
-
   &__left {
     grid-area: left;
     display: flex;

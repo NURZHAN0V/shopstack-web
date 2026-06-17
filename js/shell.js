@@ -58,11 +58,10 @@ function updateCatalogTriggerIcon(isOpen) {
 function closeMegaMenu() {
   const mega = document.getElementById('catalog-mega');
   const trigger = document.getElementById('catalog-trigger');
-  const header = document.getElementById('site-header');
   mega?.classList.remove('is-open');
+  mega?.setAttribute('aria-hidden', 'true');
   trigger?.classList.remove('is-open');
   trigger?.setAttribute('aria-expanded', 'false');
-  header?.classList.remove('site-header--catalog-open');
   document.body.classList.remove('catalog-mega-open');
   updateCatalogTriggerIcon(false);
 }
@@ -70,12 +69,11 @@ function closeMegaMenu() {
 function openMegaMenu() {
   const mega = document.getElementById('catalog-mega');
   const trigger = document.getElementById('catalog-trigger');
-  const header = document.getElementById('site-header');
   if (!mega || !trigger) return;
   mega.classList.add('is-open');
+  mega.setAttribute('aria-hidden', 'false');
   trigger.classList.add('is-open');
   trigger.setAttribute('aria-expanded', 'true');
-  header?.classList.add('site-header--catalog-open');
   document.body.classList.add('catalog-mega-open');
   document.dispatchEvent(new CustomEvent('shopstack:catalog-open'));
   updateCatalogTriggerIcon(true);
@@ -130,6 +128,10 @@ function bindMegaMenu() {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeMegaMenu();
+  });
+
+  document.getElementById('header-search-root')?.addEventListener('focusin', () => {
+    if (mega?.classList.contains('is-open')) closeMegaMenu();
   });
 }
 

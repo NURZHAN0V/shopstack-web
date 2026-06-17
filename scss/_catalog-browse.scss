@@ -1,6 +1,6 @@
 @use 'variables' as *;
 
-// Кнопка «Каталог» в шапке
+// Кнопка «Каталог» в шапке (Ozon-style: заливка primary, × при открытии)
 .catalog-trigger {
   display: none;
   align-items: center;
@@ -17,7 +17,7 @@
   line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background $transition, color $transition, box-shadow $transition;
+  transition: background $transition, color $transition, transform $transition;
 
   @media (min-width: $bp-md) {
     display: inline-flex;
@@ -28,18 +28,18 @@
   }
 
   &.is-open {
-    background: $color-surface;
-    color: $color-primary;
-    box-shadow: $shadow-md, 0 0 0 2px $color-primary;
+    background: $color-primary-hover;
+    color: $color-text-inverse;
 
     &:hover {
-      background: $color-primary-light;
-      color: $color-primary;
+      background: $color-primary-hover;
+      color: $color-text-inverse;
     }
 
     .catalog-trigger__icon {
-      font-size: 1.25rem;
-      font-weight: 400;
+      font-size: 1.375rem;
+      font-weight: 300;
+      line-height: 1;
     }
   }
 
@@ -70,8 +70,8 @@
     }
 
     .catalog-mega__panel {
-      opacity: 1;
       transform: translateY(0);
+      visibility: visible;
     }
   }
 
@@ -82,9 +82,9 @@
     bottom: 0;
     left: 0;
     z-index: 1;
-    background: rgb(28 25 23 / 44%);
+    background: rgb(28 25 23 / 48%);
     opacity: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.22s ease;
   }
 
   &__panel {
@@ -93,25 +93,26 @@
     left: 0;
     right: 0;
     z-index: 2;
-    max-height: calc(100vh - var(--ss-header-height) - #{$space-4});
-    margin: 0 auto;
-    max-width: $container-max;
-    padding-inline: var(--ss-container-padding);
-    opacity: 0;
-    transform: translateY(-8px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    max-height: calc(100vh - var(--ss-header-height));
+    background: $color-surface;
+    border-bottom: 1px solid $color-border;
+    box-shadow: $shadow-lg;
+    transform: translateY(-100%);
+    visibility: hidden;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.28s;
     pointer-events: auto;
+    overflow: hidden;
   }
 
   &__inner {
     display: grid;
-    grid-template-columns: 240px 1fr;
-    min-height: 360px;
-    max-height: calc(100vh - var(--ss-header-height) - #{$space-8});
-    background: $color-surface;
-    border: 1px solid $color-border;
-    border-radius: $radius-md;
-    box-shadow: $shadow-lg;
+    grid-template-columns: minmax(200px, 260px) 1fr;
+    width: 100%;
+    max-width: $container-max;
+    min-height: min(420px, calc(100vh - var(--ss-header-height) - #{$space-8}));
+    max-height: calc(100vh - var(--ss-header-height));
+    margin: 0 auto;
+    padding-inline: var(--ss-container-padding);
     overflow: hidden;
   }
 
@@ -119,15 +120,19 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: $space-2 0;
+    padding: $space-3 0;
     background: $color-bg;
     border-right: 1px solid $color-border;
     overflow-y: auto;
   }
 
   &__subs {
-    padding: $space-6 $space-8;
+    padding: $space-6 $space-6 $space-8;
     overflow-y: auto;
+
+    @media (min-width: $bp-md) {
+      padding: $space-6 $space-8 $space-8;
+    }
   }
 }
 
