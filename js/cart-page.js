@@ -1,4 +1,5 @@
-import { createGuestOrder, getDeliveryOptions } from './api.js';
+import { createGuestOrder, getDeliveryOptions, getProduct } from './api.js';
+import { getCachedStoreConfig, pageTitle } from './store-config.js';
 import {
   clearCart,
   getCartItems,
@@ -13,6 +14,8 @@ import { initCookieBanner } from './cookies.js';
 import {
   escapeHtml,
   formatPrice,
+  formatTaxHint,
+  effectivePrice,
   mediaUrl,
   productUrl,
   setMeta,
@@ -27,8 +30,9 @@ async function init() {
   const shell = await initShell({ activeNav: '' });
   if (shell.maintenance) return;
 
-  setMeta(`Корзина — ${shell.site?.name || 'Магазин'}`, 'Оформление заказа');
+  setMeta(pageTitle(['Корзина']), 'Оформление заказа');
 
+  await syncCartWithServer();
   await render();
   bindEvents();
   initCookieBanner();
@@ -36,9 +40,43 @@ async function init() {
   onCartUpdated(render);
 }
 
+async function syncCartWithServer() {
+  const items = getCartItems();
+  if (!items.length) return;
+
+  let changed = false;
+  for (const item of items) {
+    try {
+      const product = await getProduct(item.slug || item.productId);
+      const price = effectivePrice(product);
+      const image = product.productImages?.find((img) => !img.isVideo) || product.productImages?.[0];
+      if (item.price !== price) {
+        item.price = price;
+        changed = true;
+      }
+      if (image?.url && item.image !== image.url) {
+        item.image = image.url;
+        changed = true;
+      }
+      if (product.title && item.title !== product.title) {
+        item.title = product.title;
+        changed = true;
+      }
+    } catch {
+      /* товар мог быть снят — оставляем локальную копию */
+    }
+  }
+
+  if (changed) {
+    localStorage.setItem('shopstack_cart', JSON.stringify(items));
+  }
+}
+
 async function render() {
   const content = document.getElementById('page-content');
   const items = getCartItems();
+  const cfg = getCachedStoreConfig();
+  const guestCheckout = cfg.storefront?.enableGuestCheckout !== false;
 
   if (!items.length) {
     const lastOrder = readLastOrder();
@@ -58,6 +96,7 @@ async function render() {
   }
 
   const subtotal = getCartTotal();
+  const taxHint = formatTaxHint(subtotal);
   const deliveryHtml = deliveryOptions.length
     ? deliveryOptions
         .map(
@@ -85,7 +124,9 @@ async function render() {
         </section>
         <aside class="cart-checkout">
           <h2 class="cart-checkout__title">Оформление заказа</h2>
-          <form id="checkout-form" class="cart-checkout__form" novalidate>
+          ${
+            guestCheckout
+              ? `<form id="checkout-form" class="cart-checkout__form" novalidate>
             <label class="field">
               <span class="field__label">Имя и фамилия</span>
               <input type="text" name="contactPerson" required autocomplete="name">
@@ -117,13 +158,16 @@ async function render() {
             <div class="cart-checkout__summary">
               <div><span>Товары</span><strong id="cart-subtotal">${formatPrice(subtotal)}</strong></div>
               <div><span>Доставка</span><strong id="cart-delivery">${formatPrice(getSelectedDeliveryPrice())}</strong></div>
+              ${taxHint ? `<p class="cart-checkout__tax-hint">${escapeHtml(taxHint)}</p>` : ''}
               <div class="cart-checkout__total"><span>Итого</span><strong id="cart-total">${formatPrice(subtotal + getSelectedDeliveryPrice())}</strong></div>
             </div>
             <p class="cart-checkout__error" id="checkout-error" hidden></p>
             <button type="submit" class="btn btn--primary btn--block" id="checkout-submit" ${deliveryOptions.length ? '' : 'disabled'}>
               Оформить заказ
             </button>
-          </form>
+          </form>`
+              : `<p class="cart-checkout__hint">Гостевое оформление временно недоступно. Свяжитесь с магазином для заказа.</p>`
+          }
         </aside>
       </div>
     </div>`;
