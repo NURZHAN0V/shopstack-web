@@ -386,6 +386,11 @@ export function mountSearchWidget(root, options = {}) {
     }
   });
 
+  document.addEventListener('shopstack:catalog-open', () => {
+    closeDropdown();
+    closeScope();
+  });
+
   (async () => {
     state.categories = await loadCategories();
     state.categoryTree = buildCategoryTree(state.categories);

@@ -77,6 +77,7 @@ function openMegaMenu() {
   trigger.setAttribute('aria-expanded', 'true');
   header?.classList.add('site-header--catalog-open');
   document.body.classList.add('catalog-mega-open');
+  document.dispatchEvent(new CustomEvent('shopstack:catalog-open'));
   updateCatalogTriggerIcon(true);
 
   const firstRoot = mega.querySelector('[data-root-id]');

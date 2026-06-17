@@ -28,9 +28,9 @@
   }
 
   &.is-open {
-    background: $color-primary-light;
-    color: $color-primary-hover;
-    box-shadow: 0 0 0 2px $color-primary;
+    background: $color-surface;
+    color: $color-primary;
+    box-shadow: $shadow-md, 0 0 0 2px $color-primary;
 
     &:hover {
       background: $color-primary-light;
@@ -81,7 +81,8 @@
     right: 0;
     bottom: 0;
     left: 0;
-    background: rgb(28 25 23 / 40%);
+    z-index: 1;
+    background: rgb(28 25 23 / 44%);
     opacity: 0;
     transition: opacity 0.25s ease;
   }
@@ -91,6 +92,7 @@
     top: var(--ss-header-height);
     left: 0;
     right: 0;
+    z-index: 2;
     max-height: calc(100vh - var(--ss-header-height) - #{$space-4});
     margin: 0 auto;
     max-width: $container-max;
