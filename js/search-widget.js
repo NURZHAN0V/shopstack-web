@@ -49,7 +49,7 @@ function renderRecCard(product) {
     <a class="search-widget__rec-card" href="${productUrl(product.slug, product.id)}">
       ${
         img
-          ? `<img class="search-widget__rec-img" src="${escapeHtml(img)}" alt="" width="120" height="160" loading="lazy">`
+          ? `<img class="search-widget__rec-img" src="${escapeHtml(img)}" alt="" width="72" height="90" loading="lazy">`
           : '<div class="search-widget__rec-img search-widget__rec-img--placeholder" aria-hidden="true">▦</div>'
       }
       <div class="search-widget__rec-price">${formatPrice(current)}</div>

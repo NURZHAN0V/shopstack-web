@@ -387,14 +387,19 @@
   }
 
   &__recs {
-    padding: $space-5 $space-5 $space-6;
+    padding: $space-4 $space-4 $space-5;
     overflow-y: auto;
+
+    .search-widget__section-title {
+      margin-bottom: $space-3;
+      font-size: 1rem;
+    }
   }
 
   &__recs-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: $space-4 $space-3;
+    gap: $space-3 $space-2;
 
     @media (min-width: $bp-sm) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -402,14 +407,19 @@
 
     @media (min-width: $bp-md) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: $space-5 $space-4;
+      gap: $space-2 $space-3;
+    }
+
+    @media (min-width: $bp-lg) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
   &__rec-card {
     display: flex;
     flex-direction: column;
-    gap: $space-2;
+    gap: 4px;
+    min-width: 0;
     color: inherit;
     text-decoration: none;
 
@@ -424,9 +434,10 @@
 
   &__rec-img {
     width: 100%;
-    aspect-ratio: 3 / 4;
+    aspect-ratio: 4 / 5;
+    max-height: 96px;
     object-fit: cover;
-    border-radius: $radius-md;
+    border-radius: $radius-sm;
     background: $color-bg;
   }
 
@@ -435,11 +446,11 @@
     align-items: center;
     justify-content: center;
     color: $color-text-muted;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
   }
 
   &__rec-price {
-    font-size: 1rem;
+    font-size: 0.8125rem;
     font-weight: 700;
     color: $color-primary;
     line-height: 1.2;
@@ -449,9 +460,9 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: $space-2;
-    font-size: 0.75rem;
-    line-height: 1.3;
+    gap: $space-1;
+    font-size: 0.6875rem;
+    line-height: 1.25;
   }
 
   &__rec-old {
@@ -465,16 +476,17 @@
   }
 
   &__rec-stock {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: $color-primary;
     font-weight: 500;
+    line-height: 1.25;
   }
 
   &__rec-title {
-    font-size: 0.8125rem;
+    font-size: 0.6875rem;
     font-weight: 400;
     color: $color-text;
-    line-height: 1.35;
+    line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
