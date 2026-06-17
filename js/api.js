@@ -34,6 +34,10 @@ export async function getStoreStatus() {
   return request('/api/store/status');
 }
 
+export async function getStoreConfig() {
+  return request('/api/store/config');
+}
+
 export async function getSite() {
   return request('/api/site');
 }

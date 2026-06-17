@@ -1,5 +1,6 @@
 let currency = 'RUB';
 let currencyFormatter = null;
+let currencyFormat = null;
 
 export function apiUrl() {
   return (window.ShopStack?.apiUrl || '').replace(/\/$/, '');
@@ -18,11 +19,60 @@ export function setCurrency(code) {
   }
 }
 
+/** Настройки формата цены из админки (вкладка «Валюта и налоги»). */
+export function setCurrencyFormat(opts = {}) {
+  currencyFormat = {
+    currency: opts.currency || currency,
+    position: opts.currencyPosition || 'after',
+    decimal: opts.decimalSeparator || ',',
+    thousand: opts.thousandSeparator === 'none' ? '' : opts.thousandSeparator === 'space' ? ' ' : opts.thousandSeparator || ' ',
+    taxRate: Number(opts.taxRate) || 0,
+    taxLabel: opts.taxLabel || '',
+    pricesIncludeTax: opts.pricesIncludeTax !== false,
+    displayTaxInCart: opts.displayTaxInCart !== false,
+  };
+}
+
+export function getCurrencyFormat() {
+  return currencyFormat;
+}
+
+function currencySymbol(code) {
+  if (code === 'RUB') return '₽';
+  if (code === 'USD') return '$';
+  if (code === 'EUR') return '€';
+  return code;
+}
+
 export function formatPrice(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return '—';
+
+  if (currencyFormat) {
+    const { decimal, thousand, position, currency: code } = currencyFormat;
+    const fixed = num.toFixed(2);
+    const [intPart, fracPart] = fixed.split('.');
+    const grouped = thousand
+      ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousand)
+      : intPart;
+    const body = fracPart === '00' ? grouped : `${grouped}${decimal}${fracPart}`;
+    const sym = currencySymbol(code);
+    return position === 'before' ? `${sym}\u00a0${body}` : `${body}\u00a0${sym}`;
+  }
+
   if (currencyFormatter) return currencyFormatter.format(num);
   return `${Math.round(num).toLocaleString('ru-RU')} ${currency}`;
+}
+
+export function formatTaxHint(subtotal) {
+  const fmt = getCurrencyFormat();
+  if (!fmt?.displayTaxInCart || !fmt.taxRate || !fmt.taxLabel) return '';
+  if (fmt.pricesIncludeTax) {
+    return `Включая ${fmt.taxLabel} ${fmt.taxRate}%`;
+  }
+  const tax = (Number(subtotal) * fmt.taxRate) / (100 + fmt.taxRate);
+  if (!Number.isFinite(tax)) return '';
+  return `${fmt.taxLabel} ${fmt.taxRate}%: ${formatPrice(tax)}`;
 }
 
 export function mediaUrl(path) {
@@ -110,6 +160,10 @@ export function escapeHtml(str) {
 }
 
 export function setMeta(title, description) {
+  applyDocumentMeta(title, description);
+}
+
+export function applyDocumentMeta(title, description) {
   if (title) document.title = title;
   let desc = document.querySelector('meta[name="description"]');
   if (!desc) {

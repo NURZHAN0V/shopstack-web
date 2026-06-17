@@ -1,5 +1,11 @@
 import { getStoreStatus, getSite, discoverFooterPages } from './api.js';
 import {
+  loadStoreConfig,
+  siteFromConfig,
+  applyStoreSeoDefaults,
+  getCachedStoreConfig,
+} from './store-config.js';
+import {
   buildCategoryTree,
   loadCategories,
   renderRootList,
@@ -156,6 +162,8 @@ export async function initShell(options = {}) {
     status = { maintenanceMode: false };
   }
 
+  await loadStoreConfig();
+
   if (!skipMaintenance && status.maintenanceMode) {
     renderMaintenance(status.maintenanceMessageRu || status.maintenanceMessageEn);
     return { maintenance: true };
@@ -172,8 +180,12 @@ export async function initShell(options = {}) {
   try {
     state.site = await getSite();
   } catch {
-    state.site = { name: 'Магазин', tagline: '' };
+    state.site = siteFromConfig();
   }
+  if (!state.site?.name) {
+    state.site = siteFromConfig();
+  }
+  applyStoreSeoDefaults();
 
   state.categories = await loadCategories();
   state.categoryTree = buildCategoryTree(state.categories);
@@ -312,7 +324,7 @@ export function showEmpty(container, { title, text, actionHtml = '' }) {
 }
 
 export function renderProductCard(product, options = {}) {
-  const { eagerImage = false } = options;
+  const { eagerImage = false, showSku = false } = options;
   const img = product.productImages?.find((i) => !i.isVideo) || product.productImages?.[0];
   const imgSrc = img?.url ? mediaUrl(img.url) : '';
   const out = isOutOfStock(product);
@@ -343,6 +355,7 @@ export function renderProductCard(product, options = {}) {
         <div class="product-card__body">
           ${categoryName ? `<div class="product-card__category">${escapeHtml(categoryName)}</div>` : ''}
           <h3 class="product-card__title">${escapeHtml(product.title)}</h3>
+          ${showSku && product.sku ? `<div class="product-card__sku">${escapeHtml(product.sku)}</div>` : ''}
           <div class="price">${price}${old ? `<span class="price__old">${old}</span>` : ''}</div>
         </div>
       </a>
@@ -351,5 +364,10 @@ export function renderProductCard(product, options = {}) {
 
 export function renderProductGrid(products, options = {}) {
   if (!products?.length) return '';
-  return `<div class="product-grid">${products.map((p) => renderProductCard(p, options)).join('')}</div>`;
+  const cfg = getCachedStoreConfig();
+  const cardOptions = {
+    ...options,
+    showSku: options.showSku ?? cfg.storefront?.showProductSku === true,
+  };
+  return `<div class="product-grid">${products.map((p) => renderProductCard(p, cardOptions)).join('')}</div>`;
 }

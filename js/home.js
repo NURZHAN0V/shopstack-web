@@ -1,4 +1,5 @@
 import { getCategories, getProducts, getSlides } from './api.js';
+import { getCachedStoreConfig, pageTitle } from './store-config.js';
 import { initShell, renderProductGrid, showLoading } from './shell.js';
 import { initCookieBanner } from './cookies.js';
 import { catalogUrl, escapeHtml, mediaUrl, setMeta } from './utils.js';
@@ -11,9 +12,12 @@ async function init() {
   if (shell.maintenance) return;
 
   const site = shell.site;
-  const metaTitle = site.metaTitle || site.name || 'Главная';
-  const metaDesc = site.metaDescription || site.tagline || 'Интернет-магазин';
-  setMeta(metaTitle, metaDesc);
+  const cfg = getCachedStoreConfig();
+  const homepageTitle = cfg.storefront?.homepageTitle?.trim() || site.name || 'Главная';
+  setMeta(
+    pageTitle([homepageTitle !== site.name ? homepageTitle : 'Главная']),
+    site.metaDescription || site.tagline || cfg.general?.description || '',
+  );
 
   const [slides, categories, productsRes] = await Promise.all([
     getSlides().catch(() => []),
@@ -26,7 +30,7 @@ async function init() {
     .filter((c) => c.isActive !== false && !c.parentId)
     .slice(0, 8);
 
-  const heroHtml = activeSlides.length > 0 ? renderHero(activeSlides) : '';
+  const heroHtml = activeSlides.length > 0 ? renderHero(activeSlides) : renderHomeIntro(homepageTitle, site);
 
   const categoriesHtml =
     topCategories.length > 0
@@ -73,6 +77,17 @@ function slideImage(slide) {
       ? slide.imageTablet || slide.imageDesktop
       : slide.imageDesktop;
   return src ? mediaUrl(src) : '';
+}
+
+function renderHomeIntro(title, site) {
+  const text = site.tagline || site.metaDescription || '';
+  if (!title && !text) return '';
+  return `
+    <section class="home-intro">
+      ${title ? `<h1 class="home-intro__title">${escapeHtml(title)}</h1>` : ''}
+      ${text ? `<p class="home-intro__text">${escapeHtml(text)}</p>` : ''}
+      <a class="btn btn--primary" href="catalog.html">Смотреть каталог</a>
+    </section>`;
 }
 
 function renderHero(slides) {
