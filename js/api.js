@@ -35,7 +35,39 @@ export async function getStoreStatus() {
 }
 
 export async function getStoreConfig() {
-  return request('/api/store/config');
+  try {
+    return await request('/api/store/config');
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    const [general, status] = await Promise.all([
+      request('/api/store/general').catch(() => null),
+      getStoreStatus().catch(() => ({})),
+    ]);
+    return {
+      general: general || {},
+      storefront: {
+        homepageTitle: '',
+        catalogLayout: 'grid',
+        productsPerPage: 24,
+        showOutOfStock: true,
+        showProductSku: false,
+        enableGuestCheckout: true,
+        showBreadcrumbs: true,
+      },
+      products: {
+        showWeight: true,
+        showDimensions: false,
+        allowReviews: status?.reviewPolicy !== 'disabled',
+      },
+      currency: {
+        currency: status?.baseCurrency || 'RUB',
+        currencyPosition: 'after',
+        decimalSeparator: ',',
+        thousandSeparator: 'space',
+      },
+      seo: {},
+    };
+  }
 }
 
 export async function getSite() {
