@@ -1,5 +1,5 @@
 import { getProduct, getRelatedProducts } from './api.js';
-import { addToCart } from './cart-store.js';
+import { addToCart, getCartItem, onCartUpdated, removeFromCart, updateCartQuantity } from './cart-store.js';
 import {
   initShell,
   renderProductGrid,
@@ -122,10 +122,7 @@ async function init() {
               ${
                 out
                   ? ''
-                  : `<div class="product-page__actions">
-                <button type="button" class="btn btn--primary" id="add-to-cart">В корзину</button>
-                <a class="btn btn--ghost" href="/cart.html">Перейти в корзину</a>
-              </div>`
+                  : `<div id="product-cart-actions">${renderCartActions(product)}</div>`
               }
             </div>
             ${renderSpecs(product)}
@@ -148,23 +145,74 @@ async function init() {
       </article>`;
 
   bindGallery();
-  bindAddToCart(product);
+  bindCartActions(product);
+  onCartUpdated(() => refreshCartActions(product));
   loadRelated(product);
   initCookieBanner();
 }
 
-function bindAddToCart(product) {
-  const btn = document.getElementById('add-to-cart');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
+function renderCartActions(product) {
+  const inCart = getCartItem(product.id);
+  if (!inCart) {
+    return `
+      <div class="product-page__actions">
+        <button type="button" class="btn btn--primary" id="add-to-cart">В корзину</button>
+        <a class="btn btn--ghost" href="/cart.html">Перейти в корзину</a>
+      </div>`;
+  }
+
+  return `
+    <div class="product-page__actions product-page__actions--in-cart">
+      <div class="product-cart-controls" role="group" aria-label="Количество в корзине">
+        <button type="button" class="product-cart-controls__btn" id="cart-qty-minus" aria-label="Уменьшить">−</button>
+        <span class="product-cart-controls__qty" id="cart-qty-value">${inCart.quantity}</span>
+        <button type="button" class="product-cart-controls__btn" id="cart-qty-plus" aria-label="Увеличить">+</button>
+      </div>
+      <button type="button" class="btn btn--ghost" id="remove-from-cart">Удалить из корзины</button>
+      <a class="btn btn--primary" href="/cart.html">Перейти в корзину</a>
+    </div>`;
+}
+
+function refreshCartActions(product) {
+  const root = document.getElementById('product-cart-actions');
+  if (!root) return;
+  root.innerHTML = renderCartActions(product);
+  bindCartActions(product);
+}
+
+function bindCartActions(product) {
+  const root = document.getElementById('product-cart-actions');
+  if (!root) return;
+
+  root.querySelector('#add-to-cart')?.addEventListener('click', () => {
     addToCart(product, 1);
-    const label = btn.textContent;
-    btn.textContent = 'Добавлено';
-    btn.disabled = true;
-    setTimeout(() => {
-      btn.textContent = label;
-      btn.disabled = false;
-    }, 1500);
+    refreshCartActions(product);
+  });
+
+  root.querySelector('#cart-qty-minus')?.addEventListener('click', () => {
+    const item = getCartItem(product.id);
+    if (!item) return;
+    if (item.quantity <= 1) {
+      removeFromCart(product.id);
+    } else {
+      updateCartQuantity(product.id, null, item.quantity - 1);
+    }
+    refreshCartActions(product);
+  });
+
+  root.querySelector('#cart-qty-plus')?.addEventListener('click', () => {
+    const item = getCartItem(product.id);
+    if (!item) {
+      addToCart(product, 1);
+    } else {
+      updateCartQuantity(product.id, null, item.quantity + 1);
+    }
+    refreshCartActions(product);
+  });
+
+  root.querySelector('#remove-from-cart')?.addEventListener('click', () => {
+    removeFromCart(product.id);
+    refreshCartActions(product);
   });
 }
 

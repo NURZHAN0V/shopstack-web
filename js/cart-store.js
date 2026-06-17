@@ -76,6 +76,11 @@ export function updateCartQuantity(productId, productVariantId, quantity) {
   writeCart(items);
 }
 
+export function getCartItem(productId, productVariantId = null) {
+  const key = itemKey(productId, productVariantId);
+  return readCart().find((i) => itemKey(i.productId, i.productVariantId) === key) || null;
+}
+
 export function removeFromCart(productId, productVariantId = null) {
   const key = itemKey(productId, productVariantId);
   writeCart(readCart().filter((i) => itemKey(i.productId, i.productVariantId) !== key));
