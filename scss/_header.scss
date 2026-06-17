@@ -10,10 +10,16 @@
 
   &__inner {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: $space-4;
+    gap: $space-3 $space-4;
     min-height: $header-height;
     padding-block: $space-3;
+
+    @media (min-width: $bp-md) {
+      flex-wrap: nowrap;
+      gap: $space-4;
+    }
   }
 
   &__logo {
@@ -41,8 +47,9 @@
 
   &__nav {
     display: none;
-    gap: $space-6;
-    margin-inline-start: $space-4;
+    align-items: center;
+    gap: $space-4;
+    margin-inline-start: $space-2;
 
     @media (min-width: $bp-md) {
       display: flex;
@@ -61,12 +68,33 @@
     }
   }
 
-  &__search {
-    flex: 1;
-    max-width: 420px;
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
     margin-inline-start: auto;
+
+    @media (min-width: $bp-md) {
+      margin-inline-start: 0;
+    }
+  }
+
+  &__search {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    margin-inline-start: 0;
     display: flex;
     gap: $space-2;
+
+    @media (min-width: $bp-md) {
+      order: unset;
+      flex: 1;
+      width: auto;
+      max-width: 480px;
+      margin-inline-start: auto;
+    }
 
     input {
       flex: 1;
@@ -103,12 +131,20 @@
 
 .mobile-nav {
   display: none;
-  padding: $space-4;
   border-top: 1px solid $color-border;
   background: $color-surface;
 
   &.is-open {
     display: block;
+  }
+
+  &__inner {
+    max-width: var(--ss-container-max);
+    margin-inline: auto;
+    padding: $space-2
+      max(var(--ss-container-padding), env(safe-area-inset-right, 0px))
+      $space-4
+      max(var(--ss-container-padding), env(safe-area-inset-left, 0px));
   }
 
   a {

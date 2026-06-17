@@ -1,11 +1,18 @@
 import { getStoreStatus, getSite, discoverFooterPages } from './api.js';
 import {
+  buildCategoryTree,
+  loadCategories,
+  renderRootList,
+  renderSubcategoryPanel,
+} from './categories.js';
+import {
   escapeHtml,
   formatPrice,
   FOOTER_PAGE_SLUGS,
   isOutOfStock,
   mediaUrl,
   pageUrl,
+  productUrl,
   setCurrency,
 } from './utils.js';
 
@@ -13,8 +20,11 @@ const state = {
   site: null,
   storeStatus: null,
   categories: [],
+  categoryTree: [],
   ready: false,
 };
+
+let megaMenuBound = false;
 
 export function getSiteData() {
   return state.site;
@@ -33,6 +43,86 @@ function renderMaintenance(message) {
         <p class="maintenance__text">${escapeHtml(message || 'Мы проводим техническое обслуживание. Пожалуйста, зайдите позже.')}</p>
       </div>
     </div>`;
+}
+
+function closeMegaMenu() {
+  const mega = document.getElementById('catalog-mega');
+  const trigger = document.getElementById('catalog-trigger');
+  mega?.classList.remove('is-open');
+  trigger?.classList.remove('is-open');
+  trigger?.setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('catalog-mega-open');
+}
+
+function openMegaMenu() {
+  const mega = document.getElementById('catalog-mega');
+  const trigger = document.getElementById('catalog-trigger');
+  if (!mega || !trigger) return;
+  mega.classList.add('is-open');
+  trigger.classList.add('is-open');
+  trigger.setAttribute('aria-expanded', 'true');
+  document.body.classList.add('catalog-mega-open');
+
+  const firstRoot = mega.querySelector('[data-root-id]');
+  if (firstRoot && !mega.querySelector('.catalog-mega__roots .is-active')) {
+    selectMegaRoot(firstRoot.dataset.rootId);
+  }
+}
+
+function selectMegaRoot(rootId) {
+  const mega = document.getElementById('catalog-mega');
+  if (!mega) return;
+
+  mega.querySelectorAll('.catalog-mega__roots .catalog-link').forEach((link) => {
+    link.classList.toggle('is-active', link.dataset.rootId === String(rootId));
+  });
+
+  const subs = document.getElementById('catalog-mega-subs');
+  if (subs) {
+    subs.innerHTML = renderSubcategoryPanel(state.categories, rootId);
+  }
+}
+
+function bindMegaMenu() {
+  if (megaMenuBound) return;
+  megaMenuBound = true;
+
+  const trigger = document.getElementById('catalog-trigger');
+  const mega = document.getElementById('catalog-mega');
+  const backdrop = document.getElementById('catalog-mega-backdrop');
+
+  trigger?.addEventListener('click', () => {
+    if (mega?.classList.contains('is-open')) {
+      closeMegaMenu();
+    } else {
+      openMegaMenu();
+    }
+  });
+
+  backdrop?.addEventListener('click', closeMegaMenu);
+
+  mega?.querySelector('.catalog-mega__roots')?.addEventListener('mouseover', (e) => {
+    const link = e.target.closest('[data-root-id]');
+    if (link) selectMegaRoot(link.dataset.rootId);
+  });
+
+  mega?.querySelector('.catalog-mega__roots')?.addEventListener('focusin', (e) => {
+    const link = e.target.closest('[data-root-id]');
+    if (link) selectMegaRoot(link.dataset.rootId);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMegaMenu();
+  });
+}
+
+function bindMobileCatalogNav() {
+  const toggle = document.getElementById('mobile-catalog-toggle');
+  const panel = document.getElementById('mobile-catalog-panel');
+  toggle?.addEventListener('click', () => {
+    const open = panel?.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
 }
 
 export async function initShell(options = {}) {
@@ -66,32 +156,66 @@ export async function initShell(options = {}) {
     state.site = { name: 'Магазин', tagline: '' };
   }
 
+  state.categories = await loadCategories();
+  state.categoryTree = buildCategoryTree(state.categories);
+
   const site = state.site;
   const logoSrc = site.logo ? mediaUrl(site.logo) : '';
   const logoHtml = logoSrc
     ? `<img src="${escapeHtml(logoSrc)}" alt="" width="40" height="40">`
     : '';
 
+  const rootListHtml = renderRootList(state.categoryTree);
+  const firstRootId = state.categoryTree[0]?.id || '';
+  const initialSubs = firstRootId
+    ? renderSubcategoryPanel(state.categories, firstRootId)
+    : '<p class="catalog-subs__empty">Категории пока не добавлены.</p>';
+
   headerEl.innerHTML = `
     <div class="container site-header__inner">
-      <a class="site-header__logo" href="index.html">
+      <a class="site-header__logo" href="/index.html">
         ${logoHtml}
         <span>${escapeHtml(site.name || 'ShopStack')}</span>
       </a>
-      <nav class="site-header__nav" aria-label="Основная навигация">
-        <a href="index.html" class="${activeNav === 'home' ? 'is-active' : ''}">Главная</a>
-        <a href="catalog.html" class="${activeNav === 'catalog' ? 'is-active' : ''}">Каталог</a>
-      </nav>
-      <form class="site-header__search" action="search.html" method="get" role="search">
+      <div class="site-header__actions">
+        <button type="button" class="catalog-trigger" id="catalog-trigger" aria-expanded="false" aria-controls="catalog-mega">
+          <span class="catalog-trigger__icon" aria-hidden="true">☰</span>
+          Каталог
+        </button>
+        <nav class="site-header__nav" aria-label="Основная навигация">
+          <a href="/index.html" class="${activeNav === 'home' ? 'is-active' : ''}">Главная</a>
+        </nav>
+      </div>
+      <form class="site-header__search" action="/search.html" method="get" role="search">
         <label class="sr-only" for="header-search">Поиск товаров</label>
         <input id="header-search" type="search" name="q" placeholder="Поиск товаров…" autocomplete="off">
         <button type="submit" class="btn btn--primary btn--sm">Найти</button>
       </form>
       <button type="button" class="site-header__menu-btn" id="mobile-menu-btn" aria-label="Меню" aria-expanded="false">☰</button>
     </div>
+    <div class="catalog-mega" id="catalog-mega" aria-hidden="true">
+      <div class="catalog-mega__backdrop" id="catalog-mega-backdrop"></div>
+      <div class="catalog-mega__panel">
+        <div class="catalog-mega__inner">
+          <nav class="catalog-mega__roots" aria-label="Категории">${rootListHtml}</nav>
+          <div class="catalog-mega__subs" id="catalog-mega-subs">${initialSubs}</div>
+        </div>
+      </div>
+    </div>
     <nav class="mobile-nav" id="mobile-nav" aria-label="Мобильное меню">
-      <a href="index.html">Главная</a>
-      <a href="catalog.html">Каталог</a>
+      <div class="mobile-nav__inner">
+        <div class="mobile-catalog-nav">
+          <button type="button" class="mobile-catalog-nav__toggle" id="mobile-catalog-toggle" aria-expanded="false" aria-controls="mobile-catalog-panel">
+            Каталог
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="mobile-catalog-nav__panel" id="mobile-catalog-panel">
+            ${rootListHtml}
+          </div>
+        </div>
+        <a href="/index.html">Главная</a>
+        <a href="/catalog.html">Все товары</a>
+      </div>
     </nav>`;
 
   const footerPages = await discoverFooterPages(FOOTER_PAGE_SLUGS);
@@ -117,8 +241,8 @@ export async function initShell(options = {}) {
         <div>
           <div class="site-footer__heading">Покупателям</div>
           <div class="site-footer__links">
-            <a href="catalog.html">Каталог</a>
-            <a href="search.html">Поиск</a>
+            <a href="/catalog.html">Каталог</a>
+            <a href="/search.html">Поиск</a>
             ${pageLinks}
           </div>
         </div>
@@ -137,12 +261,16 @@ export async function initShell(options = {}) {
   menuBtn?.addEventListener('click', () => {
     const open = mobileNav?.classList.toggle('is-open');
     menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (!open) closeMegaMenu();
   });
+
+  bindMegaMenu();
+  bindMobileCatalogNav();
 
   if (appEl) appEl.classList.remove('app-hidden');
   state.ready = true;
 
-  return { maintenance: false, site };
+  return { maintenance: false, site, categories: state.categories, categoryTree: state.categoryTree };
 }
 
 export function showLoading(container) {
@@ -161,7 +289,8 @@ export function showEmpty(container, { title, text, actionHtml = '' }) {
     </div>`;
 }
 
-export function renderProductCard(product) {
+export function renderProductCard(product, options = {}) {
+  const { eagerImage = false } = options;
   const img = product.productImages?.find((i) => !i.isVideo) || product.productImages?.[0];
   const imgSrc = img?.url ? mediaUrl(img.url) : '';
   const out = isOutOfStock(product);
@@ -177,11 +306,11 @@ export function renderProductCard(product) {
 
   return `
     <article class="product-card">
-      <a class="product-card__link" href="product.html?slug=${encodeURIComponent(product.slug)}">
+      <a class="product-card__link" href="${productUrl(product.slug, product.id)}">
         <div class="product-card__image-wrap">
           ${
             imgSrc
-              ? `<img class="product-card__image" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(img.alt || product.title)}" loading="lazy">`
+              ? `<img class="product-card__image" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(img.alt || product.title)}" decoding="async" ${eagerImage ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'}>`
               : `<div class="product-card__image skeleton"></div>`
           }
           <div class="product-card__badges">
@@ -198,7 +327,7 @@ export function renderProductCard(product) {
     </article>`;
 }
 
-export function renderProductGrid(products) {
+export function renderProductGrid(products, options = {}) {
   if (!products?.length) return '';
-  return `<div class="product-grid">${products.map(renderProductCard).join('')}</div>`;
+  return `<div class="product-grid">${products.map((p) => renderProductCard(p, options)).join('')}</div>`;
 }
