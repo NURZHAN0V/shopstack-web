@@ -1,0 +1,67 @@
+@use 'variables' as *;
+
+.container {
+  width: min(100% - #{$space-8}, #{$container-max});
+  margin-inline: auto;
+}
+
+.page-main {
+  flex: 1;
+  padding-block: $space-8;
+
+  @media (min-width: $bp-md) {
+    padding-block: $space-10;
+  }
+}
+
+.page-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: $space-2;
+}
+
+.page-lead {
+  color: $color-text-muted;
+  margin-bottom: $space-8;
+  max-width: 42rem;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: $space-6;
+}
+
+.grid-2 {
+  display: grid;
+  gap: $space-6;
+
+  @media (min-width: $bp-lg) {
+    grid-template-columns: 260px 1fr;
+    align-items: start;
+  }
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  font-size: 0.875rem;
+  color: $color-text-muted;
+  margin-bottom: $space-6;
+
+  a {
+    color: inherit;
+
+    &:hover {
+      color: $color-primary;
+    }
+  }
+
+  &__sep::before {
+    content: '/';
+    margin-inline-end: $space-2;
+    color: $color-border-strong;
+  }
+}

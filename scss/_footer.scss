@@ -1,0 +1,67 @@
+@use 'variables' as *;
+
+.site-footer {
+  margin-top: auto;
+  background: $color-text;
+  color: $color-text-inverse;
+  padding-block: $space-12;
+
+  a {
+    color: rgb(250 250 249 / 85%);
+    text-decoration: none;
+
+    &:hover {
+      color: #fff;
+      text-decoration: underline;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    gap: $space-8;
+
+    @media (min-width: $bp-md) {
+      grid-template-columns: 1.5fr 1fr 1fr;
+    }
+  }
+
+  &__brand {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: $space-3;
+  }
+
+  &__text {
+    color: rgb(250 250 249 / 70%);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  &__heading {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgb(250 250 249 / 55%);
+    margin-bottom: $space-4;
+  }
+
+  &__links {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+    font-size: 0.9375rem;
+  }
+
+  &__bottom {
+    margin-top: $space-10;
+    padding-top: $space-6;
+    border-top: 1px solid rgb(255 255 255 / 12%);
+    font-size: 0.8125rem;
+    color: rgb(250 250 249 / 55%);
+    display: flex;
+    flex-wrap: wrap;
+    gap: $space-4;
+    justify-content: space-between;
+  }
+}

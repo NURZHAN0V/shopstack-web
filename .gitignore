@@ -1,0 +1,20 @@
+# Зависимости
+node_modules/
+
+# Сборка Sass (артефакты; css/main.css коммитим для работы без build)
+.sass-cache/
+css/*.map
+
+# Логи
+*.log
+npm-debug.log*
+
+# ОС и редактор
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Локальные переопределения
+*.local

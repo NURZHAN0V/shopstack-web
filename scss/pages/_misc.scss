@@ -1,0 +1,103 @@
+@use '../variables' as *;
+
+.maintenance {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-8;
+  text-align: center;
+  background: $color-bg;
+
+  &__card {
+    max-width: 28rem;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    padding: $space-10;
+    box-shadow: $shadow-md;
+  }
+
+  &__icon {
+    font-size: 3rem;
+    margin-bottom: $space-5;
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: $space-4;
+  }
+
+  &__text {
+    color: $color-text-muted;
+    line-height: 1.6;
+  }
+}
+
+.content-page {
+  max-width: 48rem;
+
+  &__body {
+    line-height: 1.7;
+
+    h2,
+    h3 {
+      margin-top: $space-8;
+      margin-bottom: $space-4;
+    }
+
+    p {
+      margin-bottom: $space-4;
+    }
+
+    ul,
+    ol {
+      margin-bottom: $space-4;
+      padding-left: $space-6;
+      list-style: disc;
+    }
+  }
+}
+
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  padding: $space-4;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+
+  &.is-visible {
+    transform: translateY(0);
+  }
+
+  &__inner {
+    max-width: $container-max;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $space-4;
+    padding: $space-4 $space-6;
+    background: $color-text;
+    color: $color-text-inverse;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-lg;
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgb(250 250 249 / 85%);
+
+    a {
+      color: #fff;
+      text-decoration: underline;
+    }
+  }
+}

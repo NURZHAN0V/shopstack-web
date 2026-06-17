@@ -1,0 +1,13 @@
+{
+  "name": "shopstack-web",
+  "private": true,
+  "description": "Публичная витрина ShopStack (HTML + SCSS)",
+  "scripts": {
+    "build:css": "sass scss/main.scss css/main.css --style=compressed",
+    "watch:css": "sass scss/main.scss css/main.css --watch",
+    "dev": "npx --yes serve . -l 3000"
+  },
+  "devDependencies": {
+    "sass": "^1.100.0"
+  }
+}

@@ -1,0 +1,126 @@
+@use 'variables' as *;
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: $color-surface;
+  border-bottom: 1px solid $color-border;
+  box-shadow: $shadow-sm;
+
+  &__inner {
+    display: flex;
+    align-items: center;
+    gap: $space-4;
+    min-height: $header-height;
+    padding-block: $space-3;
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    flex-shrink: 0;
+    color: $color-text;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.125rem;
+
+    &:hover {
+      text-decoration: none;
+      color: $color-primary;
+    }
+
+    img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border-radius: $radius-sm;
+    }
+  }
+
+  &__nav {
+    display: none;
+    gap: $space-6;
+    margin-inline-start: $space-4;
+
+    @media (min-width: $bp-md) {
+      display: flex;
+    }
+
+    a {
+      color: $color-text;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      text-decoration: none;
+
+      &:hover,
+      &.is-active {
+        color: $color-primary;
+      }
+    }
+  }
+
+  &__search {
+    flex: 1;
+    max-width: 420px;
+    margin-inline-start: auto;
+    display: flex;
+    gap: $space-2;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: $space-2 $space-4;
+      border: 1px solid $color-border;
+      border-radius: $radius-full;
+      background: $color-bg;
+      outline: none;
+      transition: border-color $transition, box-shadow $transition;
+
+      &:focus {
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgb(180 83 9 / 15%);
+      }
+    }
+  }
+
+  &__menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+    background: $color-surface;
+
+    @media (min-width: $bp-md) {
+      display: none;
+    }
+  }
+}
+
+.mobile-nav {
+  display: none;
+  padding: $space-4;
+  border-top: 1px solid $color-border;
+  background: $color-surface;
+
+  &.is-open {
+    display: block;
+  }
+
+  a {
+    display: block;
+    padding: $space-3 0;
+    color: $color-text;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 1px solid $color-border;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+}

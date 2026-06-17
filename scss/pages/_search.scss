@@ -1,0 +1,28 @@
+@use '../variables' as *;
+
+.search-header {
+  margin-bottom: $space-8;
+
+  &__query {
+    font-weight: 600;
+    color: $color-primary;
+  }
+}
+
+.search-form-inline {
+  display: flex;
+  gap: $space-3;
+  margin-bottom: $space-6;
+
+  input {
+    flex: 1;
+    padding: $space-3 $space-4;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    outline: none;
+
+    &:focus {
+      border-color: $color-primary;
+    }
+  }
+}

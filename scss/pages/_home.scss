@@ -1,0 +1,151 @@
+@use '../variables' as *;
+
+.hero {
+  margin-bottom: $space-10;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  background: $color-text;
+  color: #fff;
+  position: relative;
+  min-height: 280px;
+
+  @media (min-width: $bp-md) {
+    min-height: 380px;
+  }
+
+  &__slides {
+    position: relative;
+  }
+
+  &__slide {
+    display: none;
+    position: relative;
+    min-height: inherit;
+
+    &.is-active {
+      display: block;
+    }
+  }
+
+  &__bg {
+    position: absolute;
+    inset: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.55;
+    }
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    padding: $space-10 $space-8;
+    max-width: 36rem;
+
+    @media (min-width: $bp-md) {
+      padding: $space-16;
+    }
+  }
+
+  &__title {
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: $space-4;
+  }
+
+  &__subtitle {
+    font-size: 1.0625rem;
+    opacity: 0.9;
+    margin-bottom: $space-6;
+    line-height: 1.6;
+  }
+
+  &__dots {
+    position: absolute;
+    bottom: $space-5;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: $space-2;
+    z-index: 2;
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: none;
+    background: rgb(255 255 255 / 40%);
+    padding: 0;
+    cursor: pointer;
+
+    &.is-active {
+      background: #fff;
+      width: 24px;
+      border-radius: $radius-full;
+    }
+  }
+}
+
+.welcome {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $space-8;
+  margin-bottom: $space-10;
+  text-align: center;
+
+  &__title {
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    font-weight: 700;
+    margin-bottom: $space-3;
+  }
+
+  &__text {
+    color: $color-text-muted;
+    max-width: 36rem;
+    margin: 0 auto $space-6;
+    line-height: 1.6;
+  }
+}
+
+.home-categories {
+  margin-bottom: $space-10;
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $space-4;
+
+    @media (min-width: $bp-md) {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  &__item {
+    display: block;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    padding: $space-5;
+    text-align: center;
+    color: $color-text;
+    text-decoration: none;
+    transition: box-shadow $transition;
+
+    &:hover {
+      box-shadow: $shadow-md;
+      text-decoration: none;
+      color: $color-primary;
+    }
+  }
+
+  &__name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+}
