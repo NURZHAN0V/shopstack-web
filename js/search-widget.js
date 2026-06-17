@@ -8,8 +8,7 @@ import {
 } from './search-history.js';
 import {
   buildQuickChips,
-  buildTextSuggestions,
-  findMatchingCategories,
+  buildSearchSuggestionGroups,
   formatSuggestionLabel,
 } from './search-suggest.js';
 import {
@@ -88,7 +87,7 @@ export function mountSearchWidget(root, options = {}) {
     categories: [],
     categoryTree: [],
     attributes: [],
-    suggestions: [],
+    suggestionGroups: { texts: [], categories: [], products: [] },
     recommendations: [],
   };
 
@@ -157,14 +156,12 @@ export function mountSearchWidget(root, options = {}) {
     ]);
 
     const products = productsRes.items || [];
-    const textSuggestions = buildTextSuggestions(q, state.categories, state.attributes);
-    const categoryMatches = findMatchingCategories(q, state.categories, 4);
-
-    state.suggestions = [
-      ...textSuggestions.map((text) => ({ type: 'text', text })),
-      ...categoryMatches.map((cat) => ({ type: 'category', category: cat })),
-      ...products.map((p) => ({ type: 'product', product: p })),
-    ];
+    state.suggestionGroups = buildSearchSuggestionGroups(
+      q,
+      state.categories,
+      state.attributes,
+      products,
+    );
 
     renderSuggestionsDropdown();
     renderChips();
@@ -253,40 +250,56 @@ export function mountSearchWidget(root, options = {}) {
   }
 
   function renderSuggestionsDropdown() {
-    if (!state.suggestions.length) {
+    const { texts, categories, products } = state.suggestionGroups;
+    const hasResults = texts.length || categories.length || products.length;
+
+    if (!hasResults) {
       dropdown.innerHTML = '<p class="search-widget__empty">Ничего не найдено</p>';
       return;
     }
 
     const q = input.value.trim();
-    dropdown.innerHTML = `
-      <div class="search-widget__suggestions">
-        ${state.suggestions
-          .map((item, index) => {
-            if (item.type === 'text') {
-              return `
-            <button type="button" class="search-widget__suggest search-widget__suggest--text" role="option" data-index="${index}" data-action="text" data-value="${escapeHtml(item.text)}">
-              <span class="search-widget__suggest-icon" aria-hidden="true">⌕</span>
-              <span class="search-widget__suggest-label">${formatSuggestionLabel(q, item.text)}</span>
-            </button>`;
-            }
-            if (item.type === 'category') {
-              const cat = item.category;
-              const parent = cat.parentId ? findCategory(state.categories, cat.parentId) : null;
-              return `
-            <a href="${catalogUrl({ categoryId: cat.id })}" class="search-widget__suggest search-widget__suggest--category" role="option" data-index="${index}">
-              <span class="search-widget__suggest-thumb search-widget__suggest-thumb--placeholder" aria-hidden="true">▦</span>
-              <span class="search-widget__suggest-body">
-                <span class="search-widget__suggest-label">${formatSuggestionLabel(q, cat.name)}</span>
-                ${parent ? `<span class="search-widget__suggest-meta">${escapeHtml(parent.name)}</span>` : ''}
-              </span>
-            </a>`;
-            }
-            const p = item.product;
-            const img = getProductImage(p);
-            const catName = p.category?.name || '';
-            return `
-          <a href="${productUrl(p.slug, p.id)}" class="search-widget__suggest search-widget__suggest--product" role="option" data-index="${index}">
+    let index = 0;
+
+    const nextIndex = () => {
+      const current = index;
+      index += 1;
+      return current;
+    };
+
+    const textHtml = texts
+      .map((item) => {
+        const i = nextIndex();
+        return `
+          <button type="button" class="search-widget__suggest search-widget__suggest--text" role="option" data-index="${i}" data-action="text" data-value="${escapeHtml(item.text)}">
+            <span class="search-widget__suggest-icon" aria-hidden="true">⌕</span>
+            <span class="search-widget__suggest-label">${formatSuggestionLabel(q, item.text)}</span>
+          </button>`;
+      })
+      .join('');
+
+    const categoryHtml = categories
+      .map((cat) => {
+        const i = nextIndex();
+        const parent = cat.parentId ? findCategory(state.categories, cat.parentId) : null;
+        return `
+          <a href="${catalogUrl({ categoryId: cat.id })}" class="search-widget__suggest search-widget__suggest--category" role="option" data-index="${i}">
+            <span class="search-widget__suggest-icon" aria-hidden="true">▦</span>
+            <span class="search-widget__suggest-body">
+              <span class="search-widget__suggest-label">${formatSuggestionLabel(q, cat.name)}</span>
+              ${parent ? `<span class="search-widget__suggest-meta">${escapeHtml(parent.name)}</span>` : ''}
+            </span>
+          </a>`;
+      })
+      .join('');
+
+    const productHtml = products
+      .map((p) => {
+        const i = nextIndex();
+        const img = getProductImage(p);
+        const catName = p.category?.name || '';
+        return `
+          <a href="${productUrl(p.slug, p.id)}" class="search-widget__suggest search-widget__suggest--product" role="option" data-index="${i}">
             ${
               img
                 ? `<img class="search-widget__suggest-thumb" src="${escapeHtml(img)}" alt="" width="44" height="44" loading="lazy">`
@@ -297,8 +310,35 @@ export function mountSearchWidget(root, options = {}) {
               ${catName ? `<span class="search-widget__suggest-meta">${escapeHtml(catName)}</span>` : ''}
             </span>
           </a>`;
-          })
-          .join('')}
+      })
+      .join('');
+
+    dropdown.innerHTML = `
+      <div class="search-widget__suggestions">
+        ${
+          texts.length
+            ? `<section class="search-widget__suggest-group" aria-label="Запросы">
+            ${texts.length > 1 || categories.length || products.length ? '<div class="search-widget__suggest-group-label">Запросы</div>' : ''}
+            ${textHtml}
+          </section>`
+            : ''
+        }
+        ${
+          categories.length
+            ? `<section class="search-widget__suggest-group" aria-label="Категории">
+            <div class="search-widget__suggest-group-label">Категории</div>
+            ${categoryHtml}
+          </section>`
+            : ''
+        }
+        ${
+          products.length
+            ? `<section class="search-widget__suggest-group" aria-label="Товары">
+            <div class="search-widget__suggest-group-label">Товары</div>
+            ${productHtml}
+          </section>`
+            : ''
+        }
       </div>`;
   }
 

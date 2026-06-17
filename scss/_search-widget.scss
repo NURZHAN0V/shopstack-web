@@ -565,6 +565,23 @@
     padding: $space-2 0;
   }
 
+  &__suggest-group {
+    &:not(:first-child) {
+      margin-top: $space-1;
+      padding-top: $space-1;
+      border-top: 1px solid $color-border;
+    }
+  }
+
+  &__suggest-group-label {
+    padding: $space-2 $space-5 $space-1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: $color-text-muted;
+  }
+
   &__empty {
     padding: $space-6;
     text-align: center;

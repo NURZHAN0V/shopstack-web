@@ -14,27 +14,28 @@ export function findMatchingCategories(query, flat, limit = 6) {
     .slice(0, limit);
 }
 
-/** Текстовые подсказки: запрос + уточнение из категорий и атрибутов. */
-export function buildTextSuggestions(query, flat, attributes, limit = 8) {
+/** Текстовые подсказки: уточнения запроса (без дубля категорий — они в отдельном блоке). */
+export function buildTextSuggestions(query, flat, attributes, limit = 6) {
   const trimmed = query.trim();
   const q = trimmed.toLowerCase();
   if (q.length < 2) return [];
+
+  const categoryNames = new Set(
+    (flat || [])
+      .filter((c) => c.isActive !== false)
+      .map((c) => String(c.name || '').trim().toLowerCase())
+      .filter(Boolean),
+  );
 
   const seen = new Set();
   const out = [];
 
   const push = (text) => {
     const key = text.toLowerCase();
-    if (seen.has(key) || key === q) return;
+    if (seen.has(key) || key === q || categoryNames.has(key)) return;
     seen.add(key);
     out.push(text);
   };
-
-  for (const cat of flat) {
-    if (cat.isActive === false) continue;
-    const name = cat.name.trim();
-    if (name.toLowerCase().includes(q)) push(name);
-  }
 
   for (const attr of attributes || []) {
     for (const val of attr.attributeValues || []) {
@@ -47,6 +48,39 @@ export function buildTextSuggestions(query, flat, attributes, limit = 8) {
   }
 
   return out.slice(0, limit);
+}
+
+/**
+ * Группы подсказок без дублей: запросы, категории, товары.
+ */
+export function buildSearchSuggestionGroups(query, categories, attributes, products, options = {}) {
+  const q = query.trim();
+  const categoryLimit = options.categoryLimit ?? 5;
+  const textLimit = options.textLimit ?? 4;
+  const productLimit = options.productLimit ?? 5;
+
+  const categoryMatches = findMatchingCategories(q, categories, categoryLimit);
+  const categoryNames = new Set(categoryMatches.map((c) => c.name.toLowerCase()));
+
+  const refinements = buildTextSuggestions(q, categories, attributes, textLimit).filter(
+    (text) => !categoryNames.has(text.toLowerCase()),
+  );
+
+  const texts = [];
+  if (q.length >= 2) {
+    texts.push({ type: 'text', text: q });
+  }
+  refinements.forEach((text) => {
+    if (text.toLowerCase() !== q.toLowerCase()) {
+      texts.push({ type: 'text', text });
+    }
+  });
+
+  return {
+    texts,
+    categories: categoryMatches,
+    products: (products || []).slice(0, productLimit),
+  };
 }
 
 /** Быстрые чипы-уточнения под строкой поиска. */
