@@ -199,7 +199,8 @@
   &__submit {
     flex-shrink: 0;
     align-self: stretch;
-    width: var(--search-bar-height);
+    width: calc(var(--search-bar-height) + 16px);
+    min-width: 60px;
     margin: 0;
     border: none;
     background: $color-primary;
@@ -218,7 +219,7 @@
 
   &__submit-icon {
     display: inline-flex;
-    font-size: 1.25rem;
+    font-size: 1.625rem;
     line-height: 1;
   }
 
