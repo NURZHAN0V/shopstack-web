@@ -113,6 +113,29 @@
   }
 }
 
+.home-intro {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: clamp(#{$space-6}, 5vw, #{$space-10});
+  text-align: center;
+  box-shadow: $shadow-sm;
+
+  &__title {
+    font-size: clamp(1.35rem, 3.5vw, 2rem);
+    font-weight: 700;
+    margin-bottom: $space-3;
+    letter-spacing: -0.02em;
+  }
+
+  &__text {
+    color: $color-text-muted;
+    max-width: 40rem;
+    margin: 0 auto $space-6;
+    line-height: 1.65;
+  }
+}
+
 .home-categories {
   margin-bottom: 0;
 

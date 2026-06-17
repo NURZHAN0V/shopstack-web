@@ -138,6 +138,15 @@
     color: $color-text-muted;
     margin-bottom: $space-3;
   }
+
+  &__sku {
+    font-size: 0.75rem;
+    color: $color-text-muted;
+    margin-bottom: $space-2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .product-grid {

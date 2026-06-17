@@ -430,6 +430,22 @@
 
 .catalog-main {
   min-width: 0;
+
+  &--list .product-grid {
+    grid-template-columns: 1fr;
+    gap: $space-4;
+  }
+
+  &--list .product-card__link {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: $space-4;
+    align-items: start;
+  }
+
+  &--list .product-card__image-wrap {
+    aspect-ratio: 1;
+  }
 }
 
 .catalog-mobile-cats {

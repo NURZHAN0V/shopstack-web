@@ -182,6 +182,13 @@
     font-size: 1.0625rem;
   }
 
+  &__tax-hint {
+    margin: $space-2 0 0;
+    font-size: 0.8125rem;
+    color: $color-text-muted;
+    line-height: 1.45;
+  }
+
   &__error {
     color: $color-danger;
     font-size: 0.875rem;
