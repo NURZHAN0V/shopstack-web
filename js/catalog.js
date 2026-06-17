@@ -1,4 +1,11 @@
-import { getAttributes, getCategories, getProducts } from './api.js';
+import { getAttributes, getProducts } from './api.js';
+import {
+  buildCategoryTree,
+  getRootCategory,
+  loadCategories,
+  renderRootList,
+  renderSubcategoryPanel,
+} from './categories.js';
 import {
   initShell,
   renderProductGrid,
@@ -15,6 +22,7 @@ import {
 } from './utils.js';
 
 let categories = [];
+let categoryTree = [];
 let attributes = [];
 
 async function init() {
@@ -30,35 +38,45 @@ async function init() {
     site.metaDescription || 'Каталог товаров интернет-магазина',
   );
 
-  [categories, attributes] = await Promise.all([
-    getCategories().catch(() => []),
-    getAttributes().catch(() => []),
-  ]);
+  categories = shell.categories?.length ? shell.categories : await loadCategories();
+  categoryTree = shell.categoryTree?.length ? shell.categoryTree : buildCategoryTree(categories);
+  attributes = await getAttributes().catch(() => []);
 
   content.innerHTML = `
-    <div class="container">
-      <h1 class="page-title">Каталог</h1>
-      <p class="page-lead">Выберите категорию и уточните параметры поиска.</p>
-      <div id="category-nav" class="category-nav"></div>
-      <div class="grid-2">
-        <aside id="filters-panel" class="filters" aria-label="Фильтры"></aside>
-        <div>
-          <div class="catalog-toolbar">
-            <div id="results-count" class="catalog-toolbar__count"></div>
+    <div class="catalog-page">
+      <aside class="catalog-sidebar" aria-label="Категории">
+        <div class="catalog-sidebar__title">Категории</div>
+        <nav class="catalog-sidebar__list" id="catalog-sidebar"></nav>
+      </aside>
+      <div class="catalog-main">
+        <div class="catalog-mobile-cats">
+          <button type="button" class="catalog-mobile-cats__toggle" id="catalog-mobile-toggle" aria-expanded="false">
+            <span id="catalog-mobile-label">Категории</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="catalog-mobile-cats__panel" id="catalog-mobile-panel"></div>
+        </div>
+        <div id="catalog-subs-panel" class="catalog-subs-panel" hidden></div>
+        <div class="catalog-products-row">
+          <aside id="filters-panel" class="filters" aria-label="Фильтры"></aside>
+          <div>
+            <div class="catalog-toolbar">
+              <div id="results-count" class="catalog-toolbar__count"></div>
+            </div>
+            <div id="products-area"></div>
           </div>
-          <div id="products-area"></div>
         </div>
       </div>
     </div>`;
 
-  renderCategoryNav();
+  renderCategoryBrowse();
   renderFilters();
   await loadProducts();
   bindEvents();
   initCookieBanner();
 
   window.addEventListener('popstate', () => {
-    renderCategoryNav();
+    renderCategoryBrowse();
     renderFilters();
     loadProducts();
   });
@@ -95,23 +113,43 @@ function resolveCategoryId(filters) {
   return '';
 }
 
-function renderCategoryNav() {
-  const el = document.getElementById('category-nav');
-  if (!el) return;
+function renderCategoryBrowse() {
   const filters = getFiltersFromUrl();
-  const activeId = String(resolveCategoryId(filters));
+  const activeId = resolveCategoryId(filters);
+  const root = activeId ? getRootCategory(categories, activeId) : null;
+  const activeRootId = root?.id || '';
 
-  const items = categories.filter((c) => c.isActive !== false);
-  el.innerHTML = `
-    <a href="catalog.html" class="${!activeId ? 'is-active' : ''}">Все</a>
-    ${items
-      .map(
-        (c) => `
-      <a href="catalog.html?categoryId=${c.id}" class="${String(c.id) === activeId ? 'is-active' : ''}">
-        ${escapeHtml(c.name)}
-      </a>`,
-      )
-      .join('')}`;
+  const sidebar = document.getElementById('catalog-sidebar');
+  const mobilePanel = document.getElementById('catalog-mobile-panel');
+  const subsPanel = document.getElementById('catalog-subs-panel');
+  const mobileLabel = document.getElementById('catalog-mobile-label');
+
+  const rootsHtml = renderRootList(categoryTree, {
+    activeRootId,
+    onAll: !activeId,
+  });
+
+  if (sidebar) sidebar.innerHTML = rootsHtml;
+  if (mobilePanel) mobilePanel.innerHTML = rootsHtml;
+
+  if (mobileLabel) {
+    if (activeId) {
+      const cat = categories.find((c) => String(c.id) === String(activeId));
+      mobileLabel.textContent = cat?.name || 'Категории';
+    } else {
+      mobileLabel.textContent = 'Все товары';
+    }
+  }
+
+  if (subsPanel) {
+    if (activeRootId) {
+      subsPanel.hidden = false;
+      subsPanel.innerHTML = renderSubcategoryPanel(categories, activeRootId, { activeId });
+    } else {
+      subsPanel.hidden = true;
+      subsPanel.innerHTML = '';
+    }
+  }
 }
 
 function renderFilters() {
@@ -176,7 +214,7 @@ async function loadProducts() {
       showEmpty(area, {
         title: 'Товары не найдены',
         text: 'Попробуйте изменить фильтры или выбрать другую категорию.',
-        actionHtml: '<a class="btn btn--primary" href="catalog.html">Сбросить фильтры</a>',
+        actionHtml: '<a class="btn btn--primary" href="/catalog.html">Сбросить фильтры</a>',
       });
       return;
     }
@@ -225,11 +263,18 @@ function bindEvents() {
 
   panel?.addEventListener('click', (e) => {
     if (e.target.closest('#clear-filters')) {
-      history.pushState(null, '', 'catalog.html');
-      renderCategoryNav();
+      history.pushState(null, '', '/catalog.html');
+      renderCategoryBrowse();
       renderFilters();
       loadProducts();
     }
+  });
+
+  const mobileToggle = document.getElementById('catalog-mobile-toggle');
+  const mobilePanel = document.getElementById('catalog-mobile-panel');
+  mobileToggle?.addEventListener('click', () => {
+    const open = mobilePanel?.classList.toggle('is-open');
+    mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 }
 
