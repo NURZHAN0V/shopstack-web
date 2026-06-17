@@ -1,6 +1,12 @@
 import { getAttributes, getProducts } from './api.js';
 import { buildCategoryTree, findCategory, loadCategories } from './categories.js';
 import {
+  addSearchHistory,
+  clearSearchHistory,
+  getSearchHistory,
+  removeSearchHistoryItem,
+} from './search-history.js';
+import {
   buildQuickChips,
   buildTextSuggestions,
   findMatchingCategories,
@@ -10,6 +16,7 @@ import {
   catalogUrl,
   debounce,
   escapeHtml,
+  formatPrice,
   getProductImage,
   productUrl,
   searchUrl,
@@ -22,6 +29,41 @@ async function loadAttributes() {
     attributesCache = (await getAttributes().catch(() => [])) || [];
   }
   return attributesCache;
+}
+
+function calcDiscountPercent(price, oldPrice) {
+  const current = Number(price);
+  const old = Number(oldPrice);
+  if (!Number.isFinite(current) || !Number.isFinite(old) || old <= current) return 0;
+  return Math.round(((old - current) / old) * 100);
+}
+
+function renderRecCard(product) {
+  const img = getProductImage(product);
+  const current = product.discountPrice > 0 ? product.discountPrice : product.price;
+  const old = product.oldPrice > current ? product.oldPrice : product.price > current ? product.price : 0;
+  const discount = calcDiscountPercent(current, old);
+  const stock = product.stockQuantity ?? product.quantity;
+
+  return `
+    <a class="search-widget__rec-card" href="${productUrl(product.slug, product.id)}">
+      ${
+        img
+          ? `<img class="search-widget__rec-img" src="${escapeHtml(img)}" alt="" width="120" height="160" loading="lazy">`
+          : '<div class="search-widget__rec-img search-widget__rec-img--placeholder" aria-hidden="true">▦</div>'
+      }
+      <div class="search-widget__rec-price">${formatPrice(current)}</div>
+      ${
+        old > current
+          ? `<div class="search-widget__rec-meta">
+          <span class="search-widget__rec-old">${formatPrice(old)}</span>
+          ${discount > 0 ? `<span class="search-widget__rec-discount">-${discount}%</span>` : ''}
+        </div>`
+          : ''
+      }
+      ${Number.isFinite(stock) && stock > 0 && stock <= 100 ? `<div class="search-widget__rec-stock">${stock} шт осталось</div>` : ''}
+      <div class="search-widget__rec-title">${escapeHtml(product.title)}</div>
+    </a>`;
 }
 
 /**
@@ -47,45 +89,51 @@ export function mountSearchWidget(root, options = {}) {
     categoryTree: [],
     attributes: [],
     suggestions: [],
+    recommendations: [],
   };
 
   root.innerHTML = `
     <form class="search-widget search-widget--${variant}" role="search" autocomplete="off">
-      <div class="search-widget__bar">
-        <div class="search-widget__scope">
-          <button type="button" class="search-widget__scope-btn" id="${inputId}-scope" aria-expanded="false" aria-haspopup="listbox">
-            <span class="search-widget__scope-label">Везде</span>
-            <span class="search-widget__scope-chevron" aria-hidden="true">▾</span>
+      <button type="button" class="search-widget__backdrop" id="${inputId}-backdrop" tabindex="-1" aria-hidden="true" hidden></button>
+      <div class="search-widget__surface">
+        <div class="search-widget__bar">
+          <div class="search-widget__scope">
+            <button type="button" class="search-widget__scope-btn" id="${inputId}-scope" aria-expanded="false" aria-haspopup="listbox">
+              <span class="search-widget__scope-label">Везде</span>
+              <span class="search-widget__scope-chevron" aria-hidden="true">▼</span>
+            </button>
+            <div class="search-widget__scope-menu" id="${inputId}-scope-menu" role="listbox" hidden></div>
+          </div>
+          <div class="search-widget__field">
+            <label class="sr-only" for="${inputId}">Поиск товаров</label>
+            <input
+              id="${inputId}"
+              class="search-widget__input"
+              type="search"
+              name="q"
+              placeholder="Искать в магазине"
+              value="${escapeHtml(initialQuery)}"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+              aria-autocomplete="list"
+              aria-controls="${inputId}-dropdown"
+              aria-expanded="false"
+            >
+            <span class="search-widget__camera" aria-hidden="true" title="Поиск по фото скоро">📷</span>
+            <button type="button" class="search-widget__clear" id="${inputId}-clear" aria-label="Очистить" hidden>×</button>
+          </div>
+          <button type="submit" class="search-widget__submit" aria-label="Найти">
+            <span class="search-widget__submit-icon" aria-hidden="true">⌕</span>
           </button>
-          <div class="search-widget__scope-menu" id="${inputId}-scope-menu" role="listbox" hidden></div>
         </div>
-        <div class="search-widget__field">
-          <label class="sr-only" for="${inputId}">Поиск товаров</label>
-          <input
-            id="${inputId}"
-            class="search-widget__input"
-            type="search"
-            name="q"
-            placeholder="Искать в магазине"
-            value="${escapeHtml(initialQuery)}"
-            autocomplete="off"
-            autocorrect="off"
-            spellcheck="false"
-            aria-autocomplete="list"
-            aria-controls="${inputId}-dropdown"
-            aria-expanded="false"
-          >
-          <button type="button" class="search-widget__clear" id="${inputId}-clear" aria-label="Очистить" hidden>×</button>
-        </div>
-        <button type="submit" class="search-widget__submit" aria-label="Найти">
-          <span class="search-widget__submit-icon" aria-hidden="true">⌕</span>
-        </button>
+        <div class="search-widget__chips" id="${inputId}-chips" hidden></div>
+        <div class="search-widget__dropdown" id="${inputId}-dropdown" role="listbox" hidden></div>
       </div>
-      <div class="search-widget__chips" id="${inputId}-chips" hidden></div>
-      <div class="search-widget__dropdown" id="${inputId}-dropdown" role="listbox" hidden></div>
     </form>`;
 
   const form = root.querySelector('form');
+  const backdrop = root.querySelector(`#${inputId}-backdrop`);
   const input = root.querySelector(`#${CSS.escape(inputId)}`);
   const clearBtn = root.querySelector(`#${inputId}-clear`);
   const dropdown = root.querySelector(`#${inputId}-dropdown`);
@@ -100,7 +148,7 @@ export function mountSearchWidget(root, options = {}) {
     updateClearButton();
 
     if (!q) {
-      renderEmptyDropdown();
+      renderHomePanel();
       renderChips();
       return;
     }
@@ -151,30 +199,53 @@ export function mountSearchWidget(root, options = {}) {
     scopeMenu.innerHTML = items.join('');
   }
 
-  function renderEmptyDropdown() {
-    const roots = state.categoryTree;
-    if (!roots.length) {
-      dropdown.innerHTML = '<p class="search-widget__empty">Категории пока не добавлены</p>';
-      return;
+  function renderHistoryList() {
+    const history = getSearchHistory();
+    if (!history.length) {
+      return '<p class="search-widget__history-empty">Здесь появятся ваши недавние запросы</p>';
     }
 
+    return `<ul class="search-widget__history-list">
+      ${history
+        .map(
+          (item) => `
+        <li>
+          <button type="button" class="search-widget__history-item" data-history-query="${encodeURIComponent(item)}">
+            <span class="search-widget__history-icon" aria-hidden="true">↺</span>
+            <span class="search-widget__history-text">${escapeHtml(item)}</span>
+            <span class="search-widget__history-remove" data-history-remove="${encodeURIComponent(item)}" role="button" tabindex="-1" aria-label="Удалить">×</span>
+          </button>
+        </li>`,
+        )
+        .join('')}
+    </ul>`;
+  }
+
+  function renderRecommendations() {
+    if (!state.recommendations.length) {
+      return '<p class="search-widget__history-empty">Рекомендации появятся, когда в каталоге будут товары</p>';
+    }
+
+    return `<div class="search-widget__recs-grid">
+      ${state.recommendations.map((p) => renderRecCard(p)).join('')}
+    </div>`;
+  }
+
+  function renderHomePanel() {
+    const history = getSearchHistory();
     dropdown.innerHTML = `
-      <div class="search-widget__browse">
-        <div class="search-widget__browse-head">
-          <span class="search-widget__browse-title">Искать везде</span>
-          <button type="button" class="search-widget__browse-close" aria-label="Закрыть">×</button>
-        </div>
-        <div class="search-widget__browse-grid">
-          ${roots
-            .map(
-              (root) => `
-            <a href="${catalogUrl({ categoryId: root.id })}" class="search-widget__browse-item">
-              <span class="search-widget__browse-icon" aria-hidden="true">▦</span>
-              <span>${escapeHtml(root.name)}</span>
-            </a>`,
-            )
-            .join('')}
-        </div>
+      <div class="search-widget__panel">
+        <section class="search-widget__history" aria-label="История поиска">
+          <div class="search-widget__section-head">
+            <h3 class="search-widget__section-title">История</h3>
+            <button type="button" class="search-widget__history-clear" id="${inputId}-history-clear" ${history.length ? '' : 'disabled'}>Очистить</button>
+          </div>
+          ${renderHistoryList()}
+        </section>
+        <section class="search-widget__recs" aria-label="Рекомендации">
+          <h3 class="search-widget__section-title">Рекомендуем для вас</h3>
+          ${renderRecommendations()}
+        </section>
       </div>`;
   }
 
@@ -185,19 +256,21 @@ export function mountSearchWidget(root, options = {}) {
     }
 
     const q = input.value.trim();
-    dropdown.innerHTML = state.suggestions
-      .map((item, index) => {
-        if (item.type === 'text') {
-          return `
+    dropdown.innerHTML = `
+      <div class="search-widget__suggestions">
+        ${state.suggestions
+          .map((item, index) => {
+            if (item.type === 'text') {
+              return `
             <button type="button" class="search-widget__suggest search-widget__suggest--text" role="option" data-index="${index}" data-action="text" data-value="${escapeHtml(item.text)}">
               <span class="search-widget__suggest-icon" aria-hidden="true">⌕</span>
               <span class="search-widget__suggest-label">${formatSuggestionLabel(q, item.text)}</span>
             </button>`;
-        }
-        if (item.type === 'category') {
-          const cat = item.category;
-          const parent = cat.parentId ? findCategory(state.categories, cat.parentId) : null;
-          return `
+            }
+            if (item.type === 'category') {
+              const cat = item.category;
+              const parent = cat.parentId ? findCategory(state.categories, cat.parentId) : null;
+              return `
             <a href="${catalogUrl({ categoryId: cat.id })}" class="search-widget__suggest search-widget__suggest--category" role="option" data-index="${index}">
               <span class="search-widget__suggest-thumb search-widget__suggest-thumb--placeholder" aria-hidden="true">▦</span>
               <span class="search-widget__suggest-body">
@@ -205,15 +278,15 @@ export function mountSearchWidget(root, options = {}) {
                 ${parent ? `<span class="search-widget__suggest-meta">${escapeHtml(parent.name)}</span>` : ''}
               </span>
             </a>`;
-        }
-        const p = item.product;
-        const img = getProductImage(p);
-        const catName = p.category?.name || '';
-        return `
+            }
+            const p = item.product;
+            const img = getProductImage(p);
+            const catName = p.category?.name || '';
+            return `
           <a href="${productUrl(p.slug, p.id)}" class="search-widget__suggest search-widget__suggest--product" role="option" data-index="${index}">
             ${
               img
-                ? `<img class="search-widget__suggest-thumb" src="${escapeHtml(img)}" alt="" width="40" height="40" loading="lazy">`
+                ? `<img class="search-widget__suggest-thumb" src="${escapeHtml(img)}" alt="" width="44" height="44" loading="lazy">`
                 : '<span class="search-widget__suggest-thumb search-widget__suggest-thumb--placeholder" aria-hidden="true">▦</span>'
             }
             <span class="search-widget__suggest-body">
@@ -221,11 +294,18 @@ export function mountSearchWidget(root, options = {}) {
               ${catName ? `<span class="search-widget__suggest-meta">${escapeHtml(catName)}</span>` : ''}
             </span>
           </a>`;
-      })
-      .join('');
+          })
+          .join('')}
+      </div>`;
   }
 
   function renderChips() {
+    if (variant !== 'page') {
+      chipsEl.hidden = true;
+      chipsEl.innerHTML = '';
+      return;
+    }
+
     const q = input.value.trim();
     const chips = buildQuickChips(q, state.attributes);
     if (!chips.length || !q) {
@@ -245,11 +325,20 @@ export function mountSearchWidget(root, options = {}) {
       .join('');
   }
 
+  function setActive(open) {
+    form?.classList.toggle('is-active', open);
+    if (variant === 'header') {
+      backdrop.hidden = !open;
+      document.body.classList.toggle('search-widget-open', open);
+    }
+  }
+
   function openDropdown() {
     state.dropdownOpen = true;
     dropdown.hidden = false;
     input.setAttribute('aria-expanded', 'true');
-    if (!input.value.trim()) renderEmptyDropdown();
+    setActive(true);
+    if (!input.value.trim()) renderHomePanel();
   }
 
   function closeDropdown() {
@@ -257,27 +346,38 @@ export function mountSearchWidget(root, options = {}) {
     state.activeIndex = -1;
     dropdown.hidden = true;
     input.setAttribute('aria-expanded', 'false');
+    setActive(false);
   }
 
   function closeScope() {
     state.scopeOpen = false;
     scopeMenu.hidden = true;
     scopeBtn?.setAttribute('aria-expanded', 'false');
+    form?.classList.remove('is-scope-open');
+    if (!state.dropdownOpen) setActive(false);
   }
 
   function openScope() {
     state.scopeOpen = true;
     scopeMenu.hidden = false;
     scopeBtn?.setAttribute('aria-expanded', 'true');
+    form?.classList.add('is-scope-open');
     closeDropdown();
+    setActive(true);
   }
 
   function navigateToSearch(extra = {}) {
     const q = input.value.trim();
+    if (q) addSearchHistory(q);
     const params = { ...extra };
     if (q) params.q = q;
     if (state.categoryId) params.categoryId = state.categoryId;
     window.location.href = searchUrl(q, params);
+  }
+
+  async function loadRecommendations() {
+    const res = await getProducts({ limit: 8, offset: 0 }).catch(() => ({ items: [] }));
+    state.recommendations = res.items || [];
   }
 
   scopeBtn?.addEventListener('click', (e) => {
@@ -294,12 +394,13 @@ export function mountSearchWidget(root, options = {}) {
     renderScopeMenu();
     closeScope();
     fetchSuggestions();
+    input.focus();
   });
 
   input.addEventListener('focus', () => {
     openDropdown();
     if (input.value.trim()) fetchSuggestions();
-    else renderEmptyDropdown();
+    else renderHomePanel();
   });
 
   input.addEventListener('input', () => {
@@ -312,7 +413,7 @@ export function mountSearchWidget(root, options = {}) {
     state.query = '';
     updateClearButton();
     openDropdown();
-    renderEmptyDropdown();
+    renderHomePanel();
     renderChips();
     input.focus();
   });
@@ -329,10 +430,30 @@ export function mountSearchWidget(root, options = {}) {
   });
 
   dropdown?.addEventListener('click', (e) => {
-    if (e.target.closest('.search-widget__browse-close')) {
-      closeDropdown();
+    const removeBtn = e.target.closest('[data-history-remove]');
+    if (removeBtn) {
+      e.stopPropagation();
+      removeSearchHistoryItem(decodeURIComponent(removeBtn.dataset.historyRemove || ''));
+      renderHomePanel();
       return;
     }
+
+    const historyBtn = e.target.closest('[data-history-query]');
+    if (historyBtn) {
+      e.preventDefault();
+      input.value = decodeURIComponent(historyBtn.dataset.historyQuery || '');
+      updateClearButton();
+      navigateToSearch();
+      return;
+    }
+
+    const clearHistoryBtn = e.target.closest(`#${inputId}-history-clear`);
+    if (clearHistoryBtn) {
+      clearSearchHistory();
+      renderHomePanel();
+      return;
+    }
+
     const textBtn = e.target.closest('[data-action="text"]');
     if (textBtn) {
       e.preventDefault();
@@ -345,6 +466,12 @@ export function mountSearchWidget(root, options = {}) {
   dropdown?.addEventListener('mousedown', (e) => {
     if (e.target.closest('a')) return;
     e.preventDefault();
+  });
+
+  backdrop?.addEventListener('click', () => {
+    closeDropdown();
+    closeScope();
+    input.blur();
   });
 
   form?.addEventListener('submit', (e) => {
@@ -369,7 +496,7 @@ export function mountSearchWidget(root, options = {}) {
       return;
     }
 
-    const options = dropdown.querySelectorAll('[role="option"], .search-widget__browse-item');
+    const options = dropdown.querySelectorAll('[role="option"], .search-widget__history-item');
     if (!options.length || dropdown.hidden) return;
 
     if (e.key === 'ArrowDown') {
@@ -395,6 +522,7 @@ export function mountSearchWidget(root, options = {}) {
     state.categories = await loadCategories();
     state.categoryTree = buildCategoryTree(state.categories);
     state.attributes = await loadAttributes();
+    await loadRecommendations();
     renderScopeMenu();
     setScopeLabel();
     updateClearButton();
