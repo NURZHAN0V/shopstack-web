@@ -1,0 +1,7 @@
+{
+  "cleanUrls": false,
+  "rewrites": [
+    { "source": "/product/:slug", "destination": "/product.html" },
+    { "source": "/product/:slug/", "destination": "/product.html" }
+  ]
+}

@@ -32,8 +32,23 @@ export function mediaUrl(path) {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-export function productUrl(slug) {
-  return `product.html?slug=${encodeURIComponent(slug)}`;
+export function productUrl(slug, id) {
+  const key = (slug && String(slug).trim()) || (id != null ? String(id) : '');
+  if (!key) return '/catalog.html';
+  return `/product/${encodeURIComponent(key)}`;
+}
+
+/** Slug или id товара из query (?slug= / ?id=) или пути /product/… */
+export function getProductKeyFromLocation() {
+  const q = parseQuery();
+  const fromQuery = (q.slug && String(q.slug).trim()) || (q.id && String(q.id).trim());
+  if (fromQuery) return fromQuery;
+
+  const path = window.location.pathname.replace(/\/+$/, '');
+  const match = path.match(/\/product\/([^/]+)$/i);
+  if (match) return decodeURIComponent(match[1]);
+
+  return '';
 }
 
 export function catalogUrl(params = {}) {
@@ -41,7 +56,7 @@ export function catalogUrl(params = {}) {
   if (params.categoryId) qs.set('categoryId', params.categoryId);
   if (params.categorySlug) qs.set('category', params.categorySlug);
   const query = qs.toString();
-  return `catalog.html${query ? `?${query}` : ''}`;
+  return `/catalog.html${query ? `?${query}` : ''}`;
 }
 
 export function searchUrl(query, extra = {}) {
@@ -50,11 +65,11 @@ export function searchUrl(query, extra = {}) {
   Object.entries(extra).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') qs.set(k, v);
   });
-  return `search.html?${qs.toString()}`;
+  return `/search.html?${qs.toString()}`;
 }
 
 export function pageUrl(slug) {
-  return `page.html?slug=${encodeURIComponent(slug)}`;
+  return `/page.html?slug=${encodeURIComponent(slug)}`;
 }
 
 export function getProductImage(product) {
