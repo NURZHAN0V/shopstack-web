@@ -42,7 +42,7 @@
     height: 48px;
     padding: 3px;
     background: $color-surface;
-    border: 2px solid $color-border;
+    border: 1px solid $color-border;
     border-radius: $radius-full;
     overflow: visible;
     transition: border-color $transition, box-shadow $transition;
@@ -50,12 +50,10 @@
 
   &.is-active:not(.is-scope-open) &__bar {
     border-color: $color-primary;
-    box-shadow: 0 0 0 1px $color-primary;
   }
 
   &.is-scope-open &__bar {
     border-color: $color-primary;
-    box-shadow: 0 0 0 1px $color-primary;
   }
 
   &__scope {
@@ -157,7 +155,7 @@
   &__input {
     width: 100%;
     height: 100%;
-    padding: 0 2.75rem 0 $space-3;
+    padding: 0 $space-10 0 $space-3;
     border: none;
     background: transparent;
     outline: none;
@@ -166,7 +164,7 @@
     color: $color-text;
 
     @media (min-width: $bp-md) {
-      padding-inline: $space-4 2.75rem;
+      padding-inline: $space-4 $space-10;
     }
 
     &::placeholder {
@@ -178,24 +176,9 @@
     }
   }
 
-  &__camera {
-    position: absolute;
-    right: $space-2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    color: $color-text-muted;
-    font-size: 1.125rem;
-    line-height: 1;
-    pointer-events: none;
-    opacity: 0.7;
-  }
-
   &__clear {
     position: absolute;
-    right: 2.25rem;
+    right: $space-2;
     width: 24px;
     height: 24px;
     border: none;

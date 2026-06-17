@@ -120,7 +120,6 @@ export function mountSearchWidget(root, options = {}) {
               aria-controls="${inputId}-dropdown"
               aria-expanded="false"
             >
-            <span class="search-widget__camera" aria-hidden="true" title="Поиск по фото скоро">📷</span>
             <button type="button" class="search-widget__clear" id="${inputId}-clear" aria-label="Очистить" hidden>×</button>
           </div>
           <button type="submit" class="search-widget__submit" aria-label="Найти">
