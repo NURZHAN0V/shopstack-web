@@ -5,7 +5,11 @@
   "scripts": {
     "build:css": "sass scss/main.scss css/main.css --style=compressed",
     "watch:css": "sass scss/main.scss css/main.css --watch",
-    "dev": "npx --yes serve . -l 3000"
+    "lint": "node scripts/validate.mjs",
+    "typecheck": "node scripts/validate.mjs",
+    "validate": "npm run lint && npm run build:css",
+    "dev": "node dev-server.mjs",
+    "dev:serve": "npx --yes serve . -l 3000 -c serve.json"
   },
   "devDependencies": {
     "sass": "^1.100.0"
