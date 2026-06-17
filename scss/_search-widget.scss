@@ -37,10 +37,11 @@
   }
 
   &__bar {
+    --search-bar-height: 48px;
     display: flex;
     align-items: stretch;
-    height: 48px;
-    padding: 3px;
+    height: var(--search-bar-height);
+    padding: 0;
     background: $color-surface;
     border: 1px solid $color-border;
     border-radius: $radius-full;
@@ -61,14 +62,14 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    padding-left: $space-1;
+    padding: 3px 0 3px 4px;
   }
 
   &__scope-btn {
     display: flex;
     align-items: center;
     gap: $space-2;
-    height: 38px;
+    height: calc(var(--search-bar-height) - 6px);
     padding: 0 $space-3;
     border: none;
     border-radius: $radius-full;
@@ -196,14 +197,13 @@
 
   &__submit {
     flex-shrink: 0;
-    width: 48px;
-    height: 38px;
-    align-self: center;
-    margin-right: 2px;
+    align-self: stretch;
+    width: var(--search-bar-height);
+    margin: 0;
     border: none;
     background: $color-primary;
     color: $color-text-inverse;
-    border-radius: $radius-full;
+    border-radius: 0 calc(var(--search-bar-height) / 2) calc(var(--search-bar-height) / 2) 0;
     transition: background $transition;
 
     &:hover {
@@ -576,16 +576,7 @@
 
   &--page {
     .search-widget__bar {
-      height: 52px;
-    }
-
-    .search-widget__submit {
-      width: 52px;
-      height: 42px;
-    }
-
-    .search-widget__scope-btn {
-      height: 42px;
+      --search-bar-height: 52px;
     }
 
     .search-widget__dropdown {
