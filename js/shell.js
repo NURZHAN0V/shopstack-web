@@ -15,6 +15,7 @@ import {
   productUrl,
   setCurrency,
 } from './utils.js';
+import { initHeaderSearch } from './search-widget.js';
 
 const state = {
   site: null,
@@ -186,11 +187,7 @@ export async function initShell(options = {}) {
           <a href="/index.html" class="${activeNav === 'home' ? 'is-active' : ''}">Главная</a>
         </nav>
       </div>
-      <form class="site-header__search" action="/search.html" method="get" role="search">
-        <label class="sr-only" for="header-search">Поиск товаров</label>
-        <input id="header-search" type="search" name="q" placeholder="Поиск товаров…" autocomplete="off">
-        <button type="submit" class="btn btn--primary btn--sm">Найти</button>
-      </form>
+      <div class="site-header__search-wrap" id="header-search-root"></div>
       <button type="button" class="site-header__menu-btn" id="mobile-menu-btn" aria-label="Меню" aria-expanded="false">☰</button>
     </div>
     <div class="catalog-mega" id="catalog-mega" aria-hidden="true">
@@ -266,6 +263,7 @@ export async function initShell(options = {}) {
 
   bindMegaMenu();
   bindMobileCatalogNav();
+  initHeaderSearch();
 
   if (appEl) appEl.classList.remove('app-hidden');
   state.ready = true;

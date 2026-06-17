@@ -79,40 +79,6 @@
     }
   }
 
-  &__search {
-    order: 3;
-    flex: 1 1 100%;
-    width: 100%;
-    max-width: none;
-    margin-inline-start: 0;
-    display: flex;
-    gap: $space-2;
-
-    @media (min-width: $bp-md) {
-      order: unset;
-      flex: 1;
-      width: auto;
-      max-width: 480px;
-      margin-inline-start: auto;
-    }
-
-    input {
-      flex: 1;
-      min-width: 0;
-      padding: $space-2 $space-4;
-      border: 1px solid $color-border;
-      border-radius: $radius-full;
-      background: $color-bg;
-      outline: none;
-      transition: border-color $transition, box-shadow $transition;
-
-      &:focus {
-        border-color: $color-primary;
-        box-shadow: 0 0 0 3px rgb(180 83 9 / 15%);
-      }
-    }
-  }
-
   &__menu-btn {
     display: flex;
     align-items: center;
