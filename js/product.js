@@ -1,4 +1,5 @@
 import { getProduct, getRelatedProducts } from './api.js';
+import { addToCart } from './cart-store.js';
 import {
   initShell,
   renderProductGrid,
@@ -118,6 +119,14 @@ async function init() {
               <div class="product-page__stock ${out ? 'product-page__stock--out' : 'product-page__stock--in'}">
                 ${out ? 'Нет в наличии' : product.unlimitedStock ? 'В наличии' : `В наличии: ${product.stockQuantity} шт.`}
               </div>
+              ${
+                out
+                  ? ''
+                  : `<div class="product-page__actions">
+                <button type="button" class="btn btn--primary" id="add-to-cart">В корзину</button>
+                <a class="btn btn--ghost" href="/cart.html">Перейти в корзину</a>
+              </div>`
+              }
             </div>
             ${renderSpecs(product)}
           </div>
@@ -139,8 +148,24 @@ async function init() {
       </article>`;
 
   bindGallery();
+  bindAddToCart(product);
   loadRelated(product);
   initCookieBanner();
+}
+
+function bindAddToCart(product) {
+  const btn = document.getElementById('add-to-cart');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    addToCart(product, 1);
+    const label = btn.textContent;
+    btn.textContent = 'Добавлено';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = label;
+      btn.disabled = false;
+    }, 1500);
+  });
 }
 
 function stripHtml(html) {

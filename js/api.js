@@ -82,6 +82,19 @@ export async function getRelatedProducts(key) {
   return request(`/api/products/${encodeURIComponent(key)}/related`);
 }
 
+export async function getDeliveryOptions() {
+  const list = await request('/api/delivery-options');
+  return Array.isArray(list) ? list.filter((item) => item.isActive !== false) : [];
+}
+
+export async function createGuestOrder(body) {
+  return request('/api/orders/guest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function getPage(slug) {
   const cacheKey = `page:${slug}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey);
