@@ -1,4 +1,5 @@
 import { getProduct, getRelatedProducts } from './api.js';
+import { getCachedStoreConfig, pageTitle } from './store-config.js';
 import { addToCart, getCartItem, onCartUpdated, removeFromCart, updateCartQuantity } from './cart-store.js';
 import {
   initShell,
@@ -57,7 +58,11 @@ async function init() {
 
   const title = product.metaTitle || product.title;
   const description = product.metaDescription || stripHtml(product.description).slice(0, 160);
-  setMeta(title, description);
+  setMeta(pageTitle([product.title]), description);
+
+  const cfg = getCachedStoreConfig();
+  const showBreadcrumbs = cfg.storefront?.showBreadcrumbs !== false;
+  const showSku = cfg.storefront?.showProductSku === true;
 
   if (product.slug || product.id) {
     history.replaceState(null, '', productUrl(product.slug, product.id));
@@ -71,7 +76,7 @@ async function init() {
   const category = product.category;
 
   content.innerHTML = `
-      <nav class="breadcrumb" aria-label="Хлебные крошки">
+      ${showBreadcrumbs ? `<nav class="breadcrumb" aria-label="Хлебные крошки">
         <a href="index.html">Главная</a>
         <span class="breadcrumb__sep"><a href="catalog.html">Каталог</a></span>
         ${
@@ -80,7 +85,7 @@ async function init() {
             : ''
         }
         <span class="breadcrumb__sep">${escapeHtml(product.title)}</span>
-      </nav>
+      </nav>` : ''}
 
       <article class="product-page">
         <div class="product-page__layout">
@@ -111,7 +116,7 @@ async function init() {
           <div class="product-page__info">
             <h1 class="product-page__title">${escapeHtml(product.title)}</h1>
             <div class="product-page__meta">
-              <span class="product-page__sku">Артикул: ${escapeHtml(product.sku)}</span>
+              ${showSku && product.sku ? `<span class="product-page__sku">Артикул: ${escapeHtml(product.sku)}</span>` : ''}
               ${out ? '<span class="badge badge--out">Нет в наличии</span>' : ''}
             </div>
             <div class="product-page__price-block">
@@ -232,6 +237,9 @@ function formatDimension(value) {
 }
 
 function buildSpecRows(product) {
+  const cfg = getCachedStoreConfig();
+  const showWeight = cfg.products?.showWeight !== false;
+  const showDimensions = cfg.products?.showDimensions === true;
   const rows = [];
 
   if (product.category?.name) {
@@ -253,9 +261,9 @@ function buildSpecRows(product) {
 
   if (product.unit) rows.push(['Единица', formatUnit(product.unit)]);
 
-  if (product.weight > 0) rows.push(['Вес', `${formatDimension(product.weight)} кг`]);
+  if (showWeight && product.weight > 0) rows.push(['Вес', `${formatDimension(product.weight)} кг`]);
 
-  if (product.length > 0 || product.width > 0 || product.height > 0) {
+  if (showDimensions && (product.length > 0 || product.width > 0 || product.height > 0)) {
     rows.push([
       'Габариты (Д×Ш×В)',
       `${formatDimension(product.length)} × ${formatDimension(product.width)} × ${formatDimension(product.height)} см`,

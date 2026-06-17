@@ -17,6 +17,7 @@ import {
   showEmpty,
   showLoading,
 } from './shell.js';
+import { getCachedStoreConfig, pageTitle } from './store-config.js';
 import { initCookieBanner } from './cookies.js';
 import {
   catalogUrl,
@@ -38,9 +39,12 @@ async function init() {
 
   const site = shell.site;
   setMeta(
-    `Каталог — ${site.name || 'Магазин'}`,
+    pageTitle(['Каталог']),
     site.metaDescription || 'Каталог товаров интернет-магазина',
   );
+
+  const cfg = getCachedStoreConfig();
+  const layoutClass = cfg.storefront?.catalogLayout === 'list' ? ' catalog-main--list' : '';
 
   categories = shell.categories?.length ? shell.categories : await loadCategories();
   categoryTree = shell.categoryTree?.length ? shell.categoryTree : buildCategoryTree(categories);
@@ -49,7 +53,7 @@ async function init() {
   content.innerHTML = `
     <div class="catalog-page">
       ${renderCatalogPanelMarkup()}
-      <div class="catalog-main">
+      <div class="catalog-main${layoutClass}">
         <div class="catalog-toolbar">
           <div id="results-count" class="catalog-toolbar__count"></div>
         </div>
@@ -101,8 +105,10 @@ async function loadProducts() {
 
   const filters = getBrowseFiltersFromUrl();
   const categoryId = resolveCategoryId(categories, filters);
+  const cfg = getCachedStoreConfig();
+  const perPage = Math.min(Math.max(Number(cfg.storefront?.productsPerPage) || 24, 6), 100);
 
-  const params = { limit: 24, offset: 0 };
+  const params = { limit: perPage, offset: 0 };
   if (categoryId) params.categoryId = categoryId;
   if (filters.q) params.q = filters.q;
   if (filters.attributeValueId.length) params.attributeValueId = filters.attributeValueId;
